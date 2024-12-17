@@ -16,7 +16,7 @@ endif()
 
 project(qcdloop)
 include(GNUInstallDirs)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(VERSION 2.1.0)
@@ -76,6 +76,7 @@ find_library(QUADMATH_LIBRARY
         /usr/lib/gcc/x86_64-linux-gnu/*
         /usr/lib/gcc/x86_64-redhat-linux/*
         /usr/lib/gcc/x86_64-pc-linux-gnu/*
+        /soft/compilers/gcc/x86_64-suse-linux/14.1.0/lib64
         "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
 )
 
@@ -127,7 +128,7 @@ if(ENABLE_FORTRAN_WRAPPER)
 endif()
 
 # qcdloop examples
-option(ENABLE_EXAMPLES "Compile test examples" OFF)
+option(ENABLE_EXAMPLES "Compile test examples" ON)
 if(ENABLE_EXAMPLES)
   add_executable(cache_test examples/cache_test.cc)
   target_link_libraries(cache_test qcdloop ${QUADMATH_LIBRARIES})
@@ -140,4 +141,8 @@ if(ENABLE_EXAMPLES)
   add_executable(trigger_test examples/trigger_test.cc)
   target_link_libraries(trigger_test qcdloop ${QUADMATH_LIBRARIES})
   set_target_properties(trigger_test PROPERTIES LINK_FLAGS "-Wl,-rpath,./")
+
+  find_package(Kokkos REQUIRED)
+  add_executable(kokkos_test examples/kokkos_test.cc)
+  target_link_libraries(kokkos_test PUBLIC Kokkos::kokkos)
 endif()
