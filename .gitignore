@@ -55,3 +55,10 @@ examples/trigger_test
 # pixi environments
 .pixi
 *.egg-info
+
+# Added for kokkos
+build/
+build_logs/
+include/
+kokkos/
+src/qcdloop.pc
