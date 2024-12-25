@@ -141,7 +141,7 @@ cd "$TARGET_DIR" || exit 1
 ######################
 ## install QCDLoops ##
 ######################
-
+export LD_LIBRARY_PATH=$1/build/:$LD_LIBRARY_PATH
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX ..

@@ -1,38 +1,25 @@
-//@HEADER
-// ************************************************************************
 //
-//                        Kokkos v. 4.0
-//       Copyright (2022) National Technology & Engineering
-//               Solutions of Sandia, LLC (NTESS).
+// QCDLoop + Kokkos 2025
 //
-// Under the terms of Contract DE-NA0003525 with NTESS,
-// the U.S. Government retains certain rights in this software.
-//
-// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
-// See https://kokkos.org/LICENSE for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//@HEADER
+// Authors: Reet Barik      : rbarik@anl.gov
+//          Taylor Childers : jchilders@anl.gov
 
 #include <Kokkos_Core.hpp>
 #include <cstdio>
+#include <iostream>
+#include <iomanip>
+#include <qcdloop/qcdloop.h>
+#include <qcdloop/cache.h>
 
-//
-// First reduction (parallel_reduce) example:
-//   1. Start up Kokkos
-//   2. Execute a parallel_reduce loop in the default execution space,
-//      using a functor to define the loop body
-//   3. Shut down Kokkos
-//
-// Compare this example to 02_simple_reduce_lambda, which uses a C++11
-// lambda to define the loop body of the parallel_reduce.
-//
+using std::vector;
+using std::cout;
+using std::endl;
+using std::setprecision;
+using std::scientific;
+using ql::complex;
+using ql::qcomplex;
+using ql::qdouble;
 
-// Reduction functor for computing the sum of squares.
-//
-// More advanced reduction examples will show how to control the
-// reduction's "join" operator.  If the join operator is not provided,
-// it defaults to binary operator+ (adding numbers together).
 struct squaresum {
   // Specify the type of the reduction value with a "value_type"
   // alias.  In this case, the reduction value has type int.
@@ -52,26 +39,31 @@ struct squaresum {
 
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
-  const int n = 10;
 
-  // Compute the sum of squares of integers from 0 to n-1, in
-  // parallel, using Kokkos.
-  int sum = 0;
-  Kokkos::parallel_reduce(n, squaresum(), sum);
-  printf(
-      "Sum of squares of integers from 0 to %i, "
-      "computed in parallel, is %i\n",
-      n - 1, sum);
+  const double mu2 = ql::Pow(1.7,2.0);
+  vector<double> p   = {};
+  vector<double>   m = {5.0};
+  vector<complex> cm = {{5.0,0.0}};
+  vector<complex> res(3);
 
-  // Compare to a sequential loop.
-  int seqSum = 0;
-  for (int i = 0; i < n; ++i) {
-    seqSum += i * i;
-  }
-  printf(
-      "Sum of squares of integers from 0 to %i, "
-      "computed sequentially, is %i\n",
-      n - 1, seqSum);
+  ql::Timer tt;
+  ql::TadPole<complex,double> tp;
+  cout << scientific << setprecision(32);
+
+  tt.start();
+  for (int i = 0; i < 1e7; i++) tp.integral(res, mu2, m, p);
+  tt.printTime(tt.stop());
+
+  for (size_t i = 0; i < res.size(); i++)
+  cout << "eps" << i << "\t" << res[i] << endl;
+
+  tt.start();
+  for (int i = 0; i < 1e7; i++) tp.integral_gpu(res, mu2, m, p);
+  tt.printTime(tt.stop());
+
+  for (size_t i = 0; i < res.size(); i++)
+  cout << "eps" << i << "\t" << res[i] << endl;
+
   Kokkos::finalize();
-  return (sum == seqSum) ? 0 : -1;
+  return 0;
 }

@@ -63,6 +63,28 @@ namespace ql
     return;
   }
 
+#ifdef ENABLE_GPU
+
+  template<typename TOutput, typename TMass, typename TScale>
+  void TadPole<TOutput,TMass,TScale>::integral_gpu(vector<TOutput> &res,
+                                               const TScale& mu2,
+                                               vector<TMass> const& m,
+                                               vector<TScale> const& p)
+  {
+    if (mu2 < 0) throw RangeError("TadPole::integral","mu2 is negative!");
+    if (res.size() != 3) { res.reserve(3); }
+    std::fill(res.begin(), res.end(), this->_czero);
+    if (!this->iszero(m[0]))
+      {
+        res[1] = TOutput(m[0]);
+        res[0] = res[1] * TOutput(Log(mu2 / m[0]) + this->_cone);
+      }
+
+    return;
+  }
+
+#endif
+
   // explicity template declaration
   template class TadPole<complex,double,double>;
   template class TadPole<complex,complex,double>;
