@@ -25,7 +25,5 @@ namespace ql
 
     //! Computes the tadpole integral
     void integral(vector<TOutput> &res, TScale const& mu2, vector<TMass> const& m, vector<TScale> const& p = {});
-    //! Computes the tadpole integral on a GPU
-    void integral_gpu(vector<TOutput> &res, TScale const& mu2, vector<TMass> const& m, vector<TScale> const& p = {});
   };
 }
