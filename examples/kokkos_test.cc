@@ -57,13 +57,6 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < res.size(); i++)
   cout << "eps" << i << "\t" << res[i] << endl;
 
-  tt.start();
-  for (int i = 0; i < 1e7; i++) tp.integral_gpu(res, mu2, m, p);
-  tt.printTime(tt.stop());
-
-  for (size_t i = 0; i < res.size(); i++)
-  cout << "eps" << i << "\t" << res[i] << endl;
-
   Kokkos::finalize();
   return 0;
 }
