@@ -22,7 +22,9 @@ namespace ql
     TadPoleGPU();  //!< Constructor.
     ~TadPoleGPU(); //!< Destructor.
 
-    //! Computes the tadpole integral on a GPU
-    void integral(vector<TOutput>& res, const TScale& mu2, vector<TMass> const& m, vector<TScale> const& p = {}) override;
+    //! Computes the tadpole integral on a CPU
+    void integral(vector<TOutput>& res, const TScale& mu2, vector<TMass> const& m, vector<TScale> const& p = {});
+    //! Computes the tadpole integral on a CPU
+    void integral_gpu(vector<TOutput>& res, const TScale& mu2, vector<TMass> const& m, vector<TScale> const& p = {});
   };
 }
