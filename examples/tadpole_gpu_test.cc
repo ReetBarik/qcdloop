@@ -116,7 +116,14 @@ namespace ql
 
     KOKKOS_INLINE_FUNCTION
     void operator()(const int i) const {
-      Kokkos::printf("Hello from i = %i\n", i);
+      
+      // initialize res to czero
+      Kokkos::deep_copy(res, TOutput(0.0));
+      if (m(0) != TMass(0.0)) {
+        res(1) = TOutput(m(0));
+        res(0) = res(1) * TOutput(Kokkos::log(mu2 / m(0) + TOutput(1.0)));
+      }
+
   }
 };
 
@@ -131,6 +138,7 @@ int main(int argc, char* argv[]) {
 
 
   /*
+  _________________________________________________________
   This is CPU only used for benchmarking 
   */
   const double mu2 = ql::Pow(1.7,2.0);
@@ -148,14 +156,16 @@ int main(int argc, char* argv[]) {
   tt.printTime(tt.stop());
 
   for (size_t i = 0; i < res.size(); i++)
-  cout << "eps" << i << "\t" << res[i] << endl;
+    cout << "eps" << i << "\t" << res[i] << endl;
 
   /*
+  _________________________________________________________
   This is experimental for usage on GPUs 
   */
 
   // Initialize views
   using complex = Kokkos::complex<double>;
+  const double mu2_d = mu2;
   Kokkos::View<double*> p_d("p", 0);
   Kokkos::View<double*> m_d("m", 1); 
   Kokkos::View<complex*> cm_d("cm", 1); 
@@ -163,16 +173,22 @@ int main(int argc, char* argv[]) {
   auto res_h = Kokkos::create_mirror_view(res_d);
 
   // Populate views
-
+  Kokkos::deep_copy(m_d, 5.0);  
+  Kokkos::deep_copy(cm_d, Kokkos::complex<double>(5.0, 0.0));
 
   // Call the integral
-  // Kokkos::parallel_for("HelloWorld", 15, ql::integral_gpu());
+  if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
+  ql::integral_gpu integral(mu2_d, p_d, m_d, res_d);
+  Kokkos::parallel_for("HelloWorld", 15, integral);
 
   // Copy result to host
   Kokkos::deep_copy(res_h, res_d);
 
   // Print result and time
+  for (size_t i = 0; i < res.size(); i++) 
+    cout << "eps" << i << "\t" << res_h(i) << endl;
   
+  Kokkos::fence();
   Kokkos::finalize();
   return 0;
 }
