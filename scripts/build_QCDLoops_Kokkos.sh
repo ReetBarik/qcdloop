@@ -146,3 +146,4 @@ mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX ..
 make && make install
+cd ..
