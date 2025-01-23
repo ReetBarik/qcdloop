@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 
     // Call the integral
     tt.start();
-    // if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
+    if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
     ql::integral_gpu integral(mu2_d, p_d, cm_d, res_d);
     Kokkos::parallel_for("Tadpole Integral", batch_size, integral);
     
