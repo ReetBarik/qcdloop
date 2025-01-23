@@ -8,9 +8,6 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
-#include <qcdloop/qcdloop.h>
-#include "qcdloop/tools.h"
-#include "qcdloop/maths.h"
 #include "qcdloop/exceptions.h"
 #include "tadpoleGPU.cc"
 
@@ -19,47 +16,23 @@ using std::cout;
 using std::endl;
 using std::setprecision;
 using std::scientific;
-using ql::complex;
 
 
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
   {
     int batch_size = 2e8;
-
-    /*
-    _________________________________________________________
-    This is CPU only used for benchmarking 
-    */
-
-    cout << ql::red << "\n====== Direct Tadpole Integral - CPU ======" << ql::def << endl;
-    const double mu2 = ql::Pow(1.7,2.0);
-    vector<double> p   = {};
-    vector<double>   m = {5.0};
-    vector<complex> cm = {{5.0,0.0}};
-    vector<complex> res(3);
-
     ql::Timer tt;
-    ql::TadPoleGPU<complex,complex> tp;
     cout << scientific << setprecision(32);
-
-    tt.start();
-    for (int i = 0; i < batch_size; i++) tp.integral(res, mu2, cm, p);
-    tt.printTime(tt.stop());
-
-    for (size_t i = 0; i < res.size(); i++)
-      cout << "eps" << i << "\t" << res[i] << endl;
-
     /*
     _________________________________________________________
     This is experimental for usage on GPUs 
     */
 
-    cout << ql::red << "\n====== Direct Tadpole Integral - GPU ======" << ql::def << endl;
     // Initialize views
     
     using complex = Kokkos::complex<double>;
-    const double mu2_d = mu2;
+    const double mu2_d = std::pow(1.7,2.0);
     Kokkos::View<double*> p_d("p", 0);
     Kokkos::View<double*> m_d("m", 1); 
     Kokkos::View<complex*> cm_d("cm", 1); 
@@ -78,7 +51,7 @@ int main(int argc, char* argv[]) {
 
     // Call the integral
     tt.start();
-    if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
+    // if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
     ql::integral_gpu integral(mu2_d, p_d, cm_d, res_d);
     Kokkos::parallel_for("Tadpole Integral", batch_size, integral);
     
@@ -87,8 +60,8 @@ int main(int argc, char* argv[]) {
     Kokkos::deep_copy(res_h, res_d);
     tt.printTime(tt.stop());
     // Print result and time
-    for (size_t i = 0; i < res.size(); i++) 
-      cout << "eps" << i << "\t" << res_h(14,i) << endl;
+    for (size_t i = 0; i < res_d.extent(1); i++) 
+      cout << "eps" << i << "\t" << res_h(batch_size - 1,i) << endl;
   }
   
   Kokkos::finalize();
