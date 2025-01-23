@@ -6,6 +6,7 @@
 
 #pragma once
 
+using complex = Kokkos::complex<double>;
 
 namespace ql
 {

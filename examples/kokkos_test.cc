@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iomanip>
 #include "qcdloop/exceptions.h"
+#include "qcdloop/timer.h"
 #include "tadpoleGPU.cc"
 
 using std::vector;

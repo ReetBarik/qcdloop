@@ -8,10 +8,7 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
-#include <qcdloop/qcdloop.h>
 #include "qcdloop/tadpoleGPU.h"
-#include "qcdloop/tools.h"
-#include "qcdloop/maths.h"
 #include "qcdloop/exceptions.h"
 
 using std::vector;
@@ -19,7 +16,6 @@ using std::cout;
 using std::endl;
 using std::setprecision;
 using std::scientific;
-using ql::complex;
 
 
 namespace ql

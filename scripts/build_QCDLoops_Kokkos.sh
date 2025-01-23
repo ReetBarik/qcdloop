@@ -31,11 +31,11 @@ mkdir -p $LOGDIR
 
 # Compiler settings (choose one):
 # A) generic GCC
-CC=$(which gcc)
-CXX=$(which g++)
+# CC=$(which gcc)
+# CXX=$(which g++)
 # B) possible alternative on AMD systems:
-# CC=$(which hipcc)
-# CXX=$(which hipcc)
+CC=$(which hipcc)
+CXX=$(which hipcc)
 # C) possible alternative on Cray systems:
 # CC=$(which cc)
 # CXX=$(which CC)
@@ -67,9 +67,9 @@ KOKKOS_URL=https://github.com/kokkos/kokkos.git
 
 # Enable Sofware Framework (choose one):
 # A) Enable CUDA
-KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
+# KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
 # B) Enable HIP
-# KOKKOS_ENABLED=Kokkos_ENABLE_HIP
+KOKKOS_ENABLED=Kokkos_ENABLE_HIP
 # C) Enable OpenMP
 # KOKKOS_ENABLED=Kokkos_ENABLE_OPENMP
 # more available on Kokkos website
@@ -78,11 +78,11 @@ KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
 # A) NVidia H100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_HOPPER90
 # B) NVidia A100
-KOKKOS_ARCH_FLAG=Kokkos_ARCH_AMPERE80
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_AMPERE80
 # C) NVidia V100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VOLTA70
 # D) AMD MI250
-# KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA90A
+KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA90A
 # E) AMD MI100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA908
 # F) Intel Skylake
@@ -99,6 +99,7 @@ HIP_EXTRA_FLAGS="-DCMAKE_CXX_COMPILER=$CXX \
 #   or NO_EXTRA_FLAGS depending on your build
 # EXTRA_FLAGS=$NO_EXTRA_FLAGS
 EXTRA_FLAGS=$CUDA_EXTRA_FLAGS
+EXTRA_FLAGS=$HIP_EXTRA_FLAGS
 
 
 

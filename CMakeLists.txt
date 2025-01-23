@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12...3.31)
-option(GPU_ONLY "Compile for GPU using Kokkos" OFF)
+option(GPU_ONLY "Compile for GPU using Kokkos" ON)
 
 
 # Disable the use of RPATHS - we probably are not
