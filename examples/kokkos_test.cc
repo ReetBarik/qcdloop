@@ -22,7 +22,7 @@ using std::scientific;
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
   {
-    int batch_size = 2e8;
+    int batch_size = 1.28e9;
     ql::Timer tt;
     cout << scientific << setprecision(32);
     /*
@@ -50,12 +50,16 @@ int main(int argc, char* argv[]) {
     Kokkos::deep_copy(m_d, m_h);
     Kokkos::deep_copy(cm_d, cm_h);
 
+    ql::TadPoleGPU<complex,double> tp(res_d);
+
     // Call the integral
     tt.start();
     if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
-    ql::integral_gpu integral(mu2_d, p_d, cm_d, res_d);
-    Kokkos::parallel_for("Tadpole Integral", batch_size, integral);
-    
+    Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size);  
+    Kokkos::parallel_for("Tadpole Integral", policy, KOKKOS_LAMBDA(const int& i){       
+      tp.integral(mu2_d, m_d, p_d, i);                                      
+    }); 
+
     // Copy result to host
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::deep_copy(res_h, res_d);

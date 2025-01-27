@@ -18,11 +18,15 @@ namespace ql
   template<typename TOutput = complex, typename TMass = double, typename TScale = double>
   class TadPoleGPU 
   {
-  public:
-    TadPoleGPU();  //!< Constructor.
-    ~TadPoleGPU(); //!< Destructor.
 
-    //! Computes the tadpole integral on a CPU
-    // void integral(vector<TOutput>& res, const TScale& mu2, vector<TMass> const& m, vector<TScale> const& p = {});
+      Kokkos::View<TOutput* [3]> res;
+    public:
+      TadPoleGPU(Kokkos::View<TOutput* [3]>& res);  //!< Constructor.
+      ~TadPoleGPU(); //!< Destructor.
+
+      //! Computes the tadpole integral on a GPU
+      KOKKOS_INLINE_FUNCTION
+      void integral(const TScale& mu2, const Kokkos::View<TMass*>& m, const Kokkos::View<TScale*>& p, const int i = {}) const;
+
   };
 }
