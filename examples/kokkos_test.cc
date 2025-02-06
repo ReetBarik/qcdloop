@@ -10,7 +10,7 @@
 #include <iomanip>
 #include "qcdloop/exceptions.h"
 #include "qcdloop/timer.h"
-#include "tadpoleGPU.cc"
+#include "qcdloop/tadpoleGPU.h"
 
 using std::vector;
 using std::cout;
@@ -30,6 +30,10 @@ int main(int argc, char* argv[]) {
     This is experimental for usage on GPUs 
     */
 
+    /**
+    * Tadpole
+    */
+
     // Initialize views
     
     using complex = Kokkos::complex<double>;
@@ -43,21 +47,19 @@ int main(int argc, char* argv[]) {
     auto cm_h = Kokkos::create_mirror_view(cm_d);
 
     // Populate views on host
-    Kokkos::deep_copy(m_h, 5.0);  
-    Kokkos::deep_copy(cm_h, Kokkos::complex<double>(5.0, 0.0));
+    m_h(0) = 5.0;  
+    cm_h(0) = Kokkos::complex<double>(5.0, 0.0);
     
     // Copy to device
     Kokkos::deep_copy(m_d, m_h);
     Kokkos::deep_copy(cm_d, cm_h);
-
-    ql::TadPoleGPU<complex,double> tp(res_d);
 
     // Call the integral
     tt.start();
     if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size);  
     Kokkos::parallel_for("Tadpole Integral", policy, KOKKOS_LAMBDA(const int& i){       
-      tp.integral(mu2_d, m_d, p_d, i);                                      
+      ql::TP0(res_d, mu2_d, m_d, p_d, i);                                      
     }); 
 
     // Copy result to host
