@@ -75,8 +75,11 @@ if(GPU_ONLY)
   include_directories(src/qcdloop src)
   
   find_package(Kokkos REQUIRED)
-  add_executable(kokkos_test examples/kokkos_test.cc)
-  target_link_libraries(kokkos_test PUBLIC Kokkos::kokkos)
+  add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
+  target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
+
+  add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
+  target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
 
 else()
 
