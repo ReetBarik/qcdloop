@@ -179,7 +179,7 @@ namespace ql
 
         res(i,0) = TOutput(Kokkos::log(mu2 / m0));
         if (Kokkos::abs((m1-m0)/mu2) >= 1e-10) { // replaceing !iszero() TODO::revisit for quad
-            res(i,0) = ql::fndd<TOutput, TMass, TScale>(0, TOutput(m0 / (m0 - m1)), 1);
+            res(i,0) -= ql::fndd<TOutput, TMass, TScale>(0, TOutput(m0 / (m0 - m1)), 1);
         }
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);

@@ -19,22 +19,6 @@ using std::setprecision;
 using std::scientific;
 using complex = Kokkos::complex<double>;
 
-void printDoubleBits(double x)
-{
-    // We'll copy the double bits into a 64-bit integer.
-    // A union is a common trick, or we can use memcpy.
-    union {
-        double d;
-        uint64_t u;
-    } conv;
-
-    conv.d = x;
-
-    // Use C99's PRIx64 for a portable 64-bit hex format.
-    // %.16g prints up to 16 significant digits in decimal (just for reference).
-    // std::printf("decimal=%.16g\n", x);
-    std::printf("0x%016" PRIx64, conv.u);
-}
 
 /*!
 * The integral is defined as:

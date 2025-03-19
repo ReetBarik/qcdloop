@@ -12,8 +12,25 @@ namespace ql
 {
     using complex = Kokkos::complex<double>;
 
+    void printDoubleBits(double x)
+    {
+        // We'll copy the double bits into a 64-bit integer.
+        // A union is a common trick, or we can use memcpy.
+        union {
+            double d;
+            uint64_t u;
+        } conv;
+
+        conv.d = x;
+
+        // Use C99's PRIx64 for a portable 64-bit hex format.
+        // %.16g prints up to 16 significant digits in decimal (just for reference).
+        // std::printf("decimal=%.16g\n", x);
+        std::printf("0x%016" PRIx64, conv.u);
+    }
+
     template<typename TOutput>
-    KOKKOS_FUNCTION TOutput kPow(TOutput const& base, int const& exponent) {
+    KOKKOS_INLINE_FUNCTION TOutput kPow(TOutput const& base, int const& exponent) {
         TOutput temp = TOutput(1.0);
 
         for (int i = 0; i < exponent; i++)
@@ -23,7 +40,7 @@ namespace ql
     }
 
     template<typename TMass>
-    KOKKOS_FUNCTION void printDoubleBits(TMass x) {
+    KOKKOS_INLINE_FUNCTION void printDoubleBits(TMass x) {
         union {
             TMass d;
             uint64_t u;
@@ -42,7 +59,7 @@ namespace ql
     * \return the complex log(z)
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_FUNCTION TOutput cLn(TOutput const& z, TScale const& isig) {
+    KOKKOS_INLINE_FUNCTION TOutput cLn(TOutput const& z, TScale const& isig) {
         TOutput cln;
         auto sign = (std::is_same<TScale, double>::value) ? (double(0) < isig) - (isig < double(0)) : isig / Kokkos::abs(isig);
         auto imag = z.imag();
@@ -65,7 +82,7 @@ namespace ql
     * \return the complex log(x)
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_FUNCTION TOutput cLn(TScale const& x, TScale const& isig) {
+    KOKKOS_INLINE_FUNCTION TOutput cLn(TScale const& x, TScale const& isig) {
         TOutput ln;
         auto sign = (std::is_same<TScale, double>::value) ? (double(0) < isig) - (isig < double(0)) : isig / Kokkos::abs(isig);
         if (x > 0)
@@ -89,7 +106,7 @@ namespace ql
     * \return function DD from Eq. 4.11 of \cite Denner:2005nn.
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_FUNCTION TOutput fndd(int const& n, TOutput const& x, TScale const& iep) {
+    KOKKOS_INLINE_FUNCTION TOutput fndd(int const& n, TOutput const& x, TScale const& iep) {
         const int infty = 16;
         TOutput res = TOutput(0.0);
         
