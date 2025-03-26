@@ -78,12 +78,15 @@ if(GPU_ONLY)
 
   add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
   target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
+  target_compile_options(tadpoleGPU_test PRIVATE -w)
 
   add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
   target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
+  target_compile_options(bubbleGPU_test PRIVATE -w)
 
   add_executable(triangleGPU_test examples/triangleGPU_test.cc)
   target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
+  target_compile_options(triangleGPU_test PRIVATE -w)
 
 else()
 

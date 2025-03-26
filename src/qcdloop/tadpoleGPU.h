@@ -5,7 +5,7 @@
 //          Taylor Childers : jchilders@anl.gov
 
 #pragma once
-
+#include "kokkosMaths.h"
 
 
 namespace ql
@@ -33,7 +33,7 @@ namespace ql
     const Kokkos::View<TMass*>& m,
     const Kokkos::View<TScale*>& p,
     const int i) {
-    if (Kokkos::abs(m(0)) >= 1e-10) { // replaceing iszero() TODO::revisit for quad
+    if (!ql::iszero(Kokkos::abs(m(0)))) { // replaceing iszero() TODO::revisit for quad
       res(i,1) = TOutput(m(0));
       res(i,0) = res(i,1) * TOutput(Kokkos::log(mu2 / m(0)) + TOutput(1.0));
     }     

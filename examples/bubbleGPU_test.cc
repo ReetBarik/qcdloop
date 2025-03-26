@@ -45,15 +45,12 @@ void BB(
 
     tt.start();
     // Normalization
-    auto t1 = std::abs(p[0]) > std::abs(mu2) ? std::abs(p[0]) : mu2;
-    auto t2 = std::abs(t1) > std::abs(m[0]) ? t1 : std::abs(m[0]);
-    auto t3 = std::abs(t2) > std::abs(m[1]) ? t2 : std::abs(m[1]);
-    const TScale scalefac = t3;
-    const TMass m0 = (std::abs(m[0]) > std::abs(m[1]) ? m[1] : m[0]) / scalefac;
-    const TMass m1 = (std::abs(m[0]) > std::abs(m[1]) ? m[0] : m[1]) / scalefac;
+    const TScale scalefac = ql::Max(ql::Max(ql::Max(std::abs(p[0]), mu2), std::abs(m[0])), std::abs(m[1]));
+    const TMass m0 = (ql::Min(m[0],m[1])) / scalefac;
+    const TMass m1 = (ql::Max(m[0],m[1])) / scalefac;
     const TScale p0 = p[0] / scalefac;
     const TScale musq = mu2 / scalefac;
-    if (std::abs(p0) < 1e-10 && std::abs(m0) < 1e-10 && std::abs(m1) < 1e-10) {  // All zero result
+    if (ql::iszero(std::abs(p0)) && ql::iszero(std::abs(m0)) && ql::iszero(std::abs(m1))) {  // All zero result
         Kokkos::parallel_for("Bubble Integral 01", policy, KOKKOS_LAMBDA(const int& i){       
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(0.0); 
@@ -61,7 +58,7 @@ void BB(
         });
         Kokkos::deep_copy(res_h, res_d);
     }
-    else if (std::abs(p0 / musq) < 1e-10 && std::abs(m0 / musq) < 1e-10 && std::abs(m1 / musq) < 1e-10) {
+    else if (ql::iszero(std::abs(p0 / musq)) && ql::iszero(std::abs(m0 / musq)) && ql::iszero(std::abs(m1 / musq))) {
         Kokkos::parallel_for("Bubble Integral 02", policy, KOKKOS_LAMBDA(const int& i){       
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(1.0); 
@@ -69,23 +66,23 @@ void BB(
         });
         Kokkos::deep_copy(res_h, res_d);
     }
-    else if (std::abs(m0 / musq) < 1e-10) {
+    else if (ql::iszero(std::abs(m0 / musq))) {
 
-        if (std::abs((m1 - p0) / musq) < 1e-10) {
+        if (ql::iszero(std::abs((m1 - p0) / musq))) {
             Kokkos::parallel_for("Bubble Integral 1", policy, KOKKOS_LAMBDA(const int& i){       
                 ql::BB1(res_d, musq, m1, i);                         // I(s;0,s) s = m1, DD(4.13)                             
             });
             Kokkos::deep_copy(res_h, res_d);
         }
                 
-        else if (std::abs(p0 / musq) < 1e-10) {
+        else if (ql::iszero(std::abs(p0 / musq))) {
             Kokkos::parallel_for("Bubble Integral 2", policy, KOKKOS_LAMBDA(const int& i){       
                 ql::BB2(res_d, musq, m1, i);                        // I(0;0,m2)                            
             });
             Kokkos::deep_copy(res_h, res_d);
         }
                 
-        else if (std::abs(m1 / musq) < 1e-10) {
+        else if (ql::iszero(std::abs(m1 / musq))) {
             Kokkos::parallel_for("Bubble Integral 3", policy, KOKKOS_LAMBDA(const int& i){       
                 ql::BB3(res_d, musq, m1 - TMass(p0), i);            // I(s;0,0)                            
             });
@@ -100,7 +97,7 @@ void BB(
         }                               
         
     }
-    else if (std::abs(p0 / musq) < 1e-10) { // deal with special case, s = 0
+    else if (ql::iszero(std::abs(p0 / musq))) { // deal with special case, s = 0
         Kokkos::parallel_for("Bubble Integral 5", policy, KOKKOS_LAMBDA(const int& i){       
             ql::BB5(res_d, musq, m0, m1, i);                            
         });

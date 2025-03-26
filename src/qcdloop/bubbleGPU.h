@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "qcdloop/kokkosUtils.h"
+#include "kokkosUtils.h"
+#include "kokkosMaths.h"
 
 namespace ql
 {
@@ -46,9 +47,7 @@ namespace ql
         const TOutput rtt= Kokkos::sqrt(bb * bb - TOutput(4.0) * TOutput(m1 * m0));
         const TOutput x1 = TOutput(0.5) * (bb + rtt) / (sqm0 * sqm1);
         const TOutput x2 = TOutput(1.0) / x1;
-        double real = (x1 - x2).real(); // TOutput will always be a complex
-        auto sign = (double(0) == real) ? 0 : ((double(0) < real) ? 1 : -1); // 'real' will always be a real double
-        res(i,0) = TOutput(2.0) - Kokkos::log(sqm0 * sqm1 / mu2) + (m0 - m1) / s * Kokkos::log(sqm1 / sqm0) - sqm0 * sqm1 / s * (x2 - x1) * ql::cLn<TOutput, TMass, TScale>(x1, sign);
+        res(i,0) = TOutput(2.0) - Kokkos::log(sqm0 * sqm1 / mu2) + (m0 - m1) / s * Kokkos::log(sqm1 / sqm0) - sqm0 * sqm1 / s * (x2 - x1) * ql::cLn<TOutput, TMass, TScale>(x1, ql::Sign(ql::Real(x1 - x2)));
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);
 
@@ -178,7 +177,7 @@ namespace ql
         const int i) {
 
         res(i,0) = TOutput(Kokkos::log(mu2 / m0));
-        if (Kokkos::abs((m1-m0)/mu2) >= 1e-10) { // replaceing !iszero() TODO::revisit for quad
+        if (!ql::iszero(Kokkos::abs((m1-m0)/mu2))) { // replaceing !iszero() TODO::revisit for quad
             res(i,0) -= ql::fndd<TOutput, TMass, TScale>(0, TOutput(m0 / (m0 - m1)), 1);
         }
         res(i,1) = TOutput(1.0);

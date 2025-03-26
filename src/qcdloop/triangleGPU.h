@@ -24,7 +24,8 @@ namespace ql
     KOKKOS_INLINE_FUNCTION
     void TIN0(
         const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6]) {
+        const TMass (&xpi)[6]
+        const int i) {
 
 
     }
@@ -42,7 +43,8 @@ namespace ql
         const Kokkos::View<TOutput* [3]>& res,
         const TMass (&xpi)[6], 
         const TMass (&sxpi)[6],
-        const int &massive) {
+        const int &massive
+        const int i) {
 
     }
 
@@ -59,7 +61,8 @@ namespace ql
         const Kokkos::View<TOutput* [3]>& res,
         const TMass (&xpi)[6], 
         const TMass (&sxpi)[6],
-        const int &massive) {
+        const int &massive
+        const int i) {
 
     }
 
@@ -76,7 +79,8 @@ namespace ql
         const Kokkos::View<TOutput* [3]>& res,
         const TMass (&xpi)[6], 
         const TMass (&sxpi)[6],
-        const int &massive) {
+        const int &massive
+        const int i) {
 
     }    
 
@@ -91,7 +95,8 @@ namespace ql
     KOKKOS_INLINE_FUNCTION
     void TINDNS(
         const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6]) {
+        const TMass (&xpi)[6]
+        const int i) {
 
     }
 
@@ -106,7 +111,8 @@ namespace ql
     KOKKOS_INLINE_FUNCTION
     void TINDNS2(
         const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6]) {
+        const TMass (&xpi)[6]
+        const int i) {
 
     }
 
@@ -121,7 +127,8 @@ namespace ql
     KOKKOS_INLINE_FUNCTION
     void TINDNS1(
         const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6]) {
+        const TMass (&xpi)[6]
+        const int i) {
 
     }
 
@@ -145,7 +152,8 @@ namespace ql
     void T1(
         const Kokkos::View<TOutput* [3]>& res,
         const TScale& mu2,
-        const TScale& p) {
+        const TScale& p
+        const int i) {
 
     }
 
@@ -168,7 +176,8 @@ namespace ql
         const Kokkos::View<TOutput* [3]>& res,
         const TScale& mu2,
         const TScale& p1,
-        const TScale& p2) {
+        const TScale& p2
+        const int i) {
 
     }
 
@@ -193,7 +202,8 @@ namespace ql
         const TScale& mu2,
         const TMass& m,
         const TScale& p2,
-        const TScale& p3) {
+        const TScale& p3
+        const int i) {
 
     }
 
@@ -216,7 +226,8 @@ namespace ql
         const Kokkos::View<TOutput* [3]>& res,
         const TScale& mu2,
         const TMass& m,
-        const TScale& p2) {
+        const TScale& p2
+        const int i) {
 
     }
 
@@ -237,7 +248,8 @@ namespace ql
     void T5(
         const Kokkos::View<TOutput* [3]>& res,
         const TScale& mu2,
-        const TMass& m) {
+        const TMass& m
+        const int i) {
 
     }
 
@@ -262,7 +274,8 @@ namespace ql
         const TScale& mu2,
         const TMass& m2sq,
         const TMass& m3sq,
-        const TScale& p2) {
+        const TScale& p2
+        const int i) {
 
     }
 

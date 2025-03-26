@@ -7,6 +7,7 @@
 #pragma once
 #include <math.h>
 #include <inttypes.h>
+#include "kokkosMaths.h"
 
 namespace ql
 {
@@ -29,15 +30,6 @@ namespace ql
         std::printf("0x%016" PRIx64, conv.u);
     }
 
-    template<typename TOutput>
-    KOKKOS_INLINE_FUNCTION TOutput kPow(TOutput const& base, int const& exponent) {
-        TOutput temp = TOutput(1.0);
-
-        for (int i = 0; i < exponent; i++)
-            temp *= base;
-
-        return temp;
-    }
 
     template<typename TMass>
     KOKKOS_INLINE_FUNCTION void printDoubleBits(TMass x) {
@@ -61,12 +53,9 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput cLn(TOutput const& z, TScale const& isig) {
         TOutput cln;
-        auto sign = (std::is_same<TScale, double>::value) ? (double(0) < isig) - (isig < double(0)) : isig / Kokkos::abs(isig);
-        auto imag = z.imag();
-        auto real = z.real();
         
-        if (imag == 0.0 && real <= 0.0) {
-            complex temp(0.0, M_PI * sign);
+        if (ql::Imag(z) == 0.0 && ql::Real(z) <= 0.0) {
+            complex temp(0.0, ql::Constants::_pi() * ql::Sign(isig));
             cln = Kokkos::log(-z) + temp;
         }
         else
@@ -84,11 +73,10 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput cLn(TScale const& x, TScale const& isig) {
         TOutput ln;
-        auto sign = (std::is_same<TScale, double>::value) ? (double(0) < isig) - (isig < double(0)) : isig / Kokkos::abs(isig);
         if (x > 0)
             ln = TOutput(Kokkos::log(x));
         else {
-            complex temp(0.0, M_PI * sign);
+            complex temp(0.0, ql::Constants::_pi() * ql::Sign(isig));
             ln = TOutput(Kokkos::log(-x)) + temp;
         }
         return ln;
@@ -126,6 +114,31 @@ namespace ql
         }
         
         return res;
+    }
+
+
+
+    /*!
+    * Computes \f${\rm Lnrat}(x,y) = \log(x-i \epsilon)-\log(y-i \epsilon)\f$
+    * \param x TMass object for the numerator
+    * \param y TMass object for the denumerator
+    * \return returns the ratio of logs
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION TOutput Lnrat(TOutput const& x, TOutput const& y) {
+        
+        const TOutput r = x / y;
+        auto imag_r = (std::is_same<TOutput, double>::value) ? 0 : r.imag();
+        if (ql::iszero(ql::Imag(r))) {
+            return TOutput(Kokkos::log(Kokkos::abs(r))) - ql::Constants::_ipio2() * TOutput(ql::Sign(-ql::Real(x)) - ql::Sign(-ql::Real(y)));
+        }  
+        else
+            return Kokkos::log(r);
+    }
+
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION TOutput Lnrat(TScale const& x, TScale const& y) {
+        return TOutput(Kokkos::log(Kokkos::abs(x / y))) - ql::Constants::_ipio2() * TOutput(ql::Sign(-x) - ql::Sign(-y));
     }
 
 
