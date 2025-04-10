@@ -177,7 +177,7 @@ namespace ql
         const int i) {
 
         res(i,0) = TOutput(Kokkos::log(mu2 / m0));
-        if (!ql::iszero(Kokkos::abs((m1-m0)/mu2))) { // replaceing !iszero() TODO::revisit for quad
+        if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs((m1-m0)/mu2))) { // replaceing !iszero() TODO::revisit for quad
             res(i,0) -= ql::fndd<TOutput, TMass, TScale>(0, TOutput(m0 / (m0 - m1)), 1);
         }
         res(i,1) = TOutput(1.0);
