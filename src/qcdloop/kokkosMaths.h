@@ -103,12 +103,16 @@ namespace ql
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static double _pi2o12() { return _pi2() / TScale(12); }
         KOKKOS_INLINE_FUNCTION static complex _ipio2() { complex temp(0.0, 0.5 * M_PI); return temp; }
+        KOKKOS_INLINE_FUNCTION static double _eps() { return 1e-6; }
         KOKKOS_INLINE_FUNCTION static double _eps4() { return 1e-4; }
         KOKKOS_INLINE_FUNCTION static double _eps7() { return 1e-7; }
         KOKKOS_INLINE_FUNCTION static double _eps15() { return 1e-15; }
         KOKKOS_INLINE_FUNCTION static double _eps14() { return 1e-14; }
         KOKKOS_INLINE_FUNCTION static double _neglig() { return 1e-14; }
         KOKKOS_INLINE_FUNCTION static double _reps() { return 1e-16; }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static double _ieps2() { return TOutput{0.0, _reps() * _reps()}; }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _2ipi() { return TOutput{0.0, 2.0 * M_PI}; }

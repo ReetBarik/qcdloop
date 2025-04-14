@@ -10,7 +10,7 @@
 #include <iomanip>
 #include "qcdloop/exceptions.h"
 #include "qcdloop/timer.h"
-#include "qcdloop/bubbleGPU.h"
+#include "qcdloop/triangleGPU.h"
 
 using std::vector;
 using std::cout;
