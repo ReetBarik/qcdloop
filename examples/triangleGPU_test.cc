@@ -45,25 +45,12 @@ void TR(
 }
 
 
-/*!
-* Parses finite triangle integrals. Formulae from 't Hooft and Veltman \cite tHooft:1978xw
-* \param res output object res[0,1,2] the coefficients in the Laurent series
-* \param xpi an array with masses and momenta squared.
-*/
-template<typename TOutput, typename TMass, typename TScale>
-void T0(
-    const TMass (&xpi)[6],
-    const int &massive,
-    int batch_size) {
-
-}
-
 
 
 int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
-
+        ql::init_isort();
 
         
     }

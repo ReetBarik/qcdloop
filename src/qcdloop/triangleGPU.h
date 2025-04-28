@@ -14,6 +14,126 @@ namespace ql
 
     using complex = Kokkos::complex<double>;
 
+    const int isort[6][6] = {
+        {0,1,2,3,4,5},
+        {1,2,0,4,5,3},
+        {2,0,1,5,3,4},
+        {1,0,2,3,5,4},
+        {0,2,1,5,4,3},
+        {2,1,0,4,3,5}
+    };
+
+    Kokkos::View<int[6][6]> d_isort("isort");
+
+
+    void init_isort() {
+        auto h_isort = Kokkos::create_mirror(d_isort);
+
+        for (int i = 0; i < 6; ++i) 
+            for (int j = 0; j < 6; ++j) 
+                h_isort(i,j) = isort[i][j];
+    
+        Kokkos::deep_copy(d_isort, h_isort);
+    }
+
+
+    /*!
+    * Sort arguments of triangle so that they are ordered in mass.
+    * \param psq are the four-momentum squared of the external lines
+    * \param msq are the squares of the masses of the internal lines
+    */
+    template<typename TOutput, typename TMass, typename TScale> 
+    KOKKOS_INLINE_FUNCTION void TriSort(Kokkos::View<TScale[3]>& psq, Kokkos::View<TMass[3]>& msq) {    
+        const int x1[3] = {2,0,1};
+        const int x2[3] = {1,2,0};
+        TScale psqtmp[3];
+        TMass  msqtmp[3];
+
+        for (int i = 0; i < 3; i++) {
+            psqtmp[i] = psq(i);
+            msqtmp[i] = msq(i);
+        }
+
+        const TMass mmax = ql::Max(msqtmp[0], ql::Max(msqtmp[1], msqtmp[2]));
+        if (mmax == msqtmp[0]) {
+            for (int i = 0; i < 3; i++) {
+                msq(x1[i]) = msqtmp[i];
+                psq(x1[i]) = psqtmp[i];
+            }
+        }
+        
+        else if (mmax == msqtmp[1]) {
+            for (int i = 0; i < 3; i++) {
+                msq(x2[i]) = msqtmp[i];
+                psq(x2[i]) = psqtmp[i];
+            }
+        }
+        
+
+        if (Kokkos::abs(msq(0)) > Kokkos::abs(msq(1))) {
+            for (int i = 0; i < 2; i++) {
+                msqtmp[i] = msq(i);
+                psqtmp[i+1] = psq(i + 1);
+            }
+            msq(0) = msqtmp[1];
+            msq(1) = msqtmp[0];
+            psq(1) = psqtmp[2];
+            psq(2) = psqtmp[1];
+        }      
+    }
+
+
+    /*!
+    * Sort arguments of triangle so that |p3sq| > |p2sq| > |p1sq| and permute masses accordingly.
+    * \param xpi i=0,2: mass^2, i=3,5: p^2
+    * \param ypi abs(p3) < abs(p4) < abs(p5)
+    */
+    template<typename TOutput, typename TMass, typename TScale> 
+    KOKKOS_INLINE_FUNCTION void TriSort2(const Kokkos::View<TMass[6]>& xpi, Kokkos::View<TMass[6]>& ypi) {
+        const TScale p1sq = Kokkos::abs(xpi(3));
+        const TScale p2sq = Kokkos::abs(xpi(4));
+        const TScale p3sq = Kokkos::abs(xpi(5));
+
+        int j = 0;
+        if      ( (p3sq >= p2sq) && (p2sq >= p1sq) ) j = 0;
+        else if ( (p1sq >= p3sq) && (p3sq >= p2sq) ) j = 1;
+        else if ( (p2sq >= p1sq) && (p1sq >= p3sq) ) j = 2;
+        else if ( (p2sq >= p3sq) && (p3sq >= p1sq) ) j = 3;
+        else if ( (p1sq >= p2sq) && (p2sq >= p3sq) ) j = 4;
+        else if ( (p3sq >= p1sq) && (p1sq >= p2sq) ) j = 5;
+        else j = 0;
+
+        for (size_t k = 0; k < 6; k++)
+            ypi(k) = xpi(d_isort(j,k));
+    }
+
+
+    /*!
+    * Sort an input vector of TScale objets based on its abs.
+    * \param psq parameter to sort in ascending order
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION void SnglSort(Kokkos::View<TScale[3]>& psq) {
+        TScale absp[3] = { Kokkos::abs(psq(0)), Kokkos::abs(psq(1)), Kokkos::abs(psq(2))};
+        if (absp[0] > absp[1]) {
+            const TScale ptmp = psq(0), atmp = absp[0];
+            psq(0) = psq(1); absp[0] = absp[1];
+            psq(1) = ptmp;   absp[1] = atmp;
+        }
+
+        if (absp[0] > absp[2]) {
+            const TScale ptmp = psq(0), atmp = absp[0];
+            psq(0) = psq(2); absp[0] = absp[2];
+            psq(2) = ptmp;   absp[2] = atmp;
+        }
+
+        if (absp[1] > absp[2]) {
+            const TScale ptmp = psq(1);
+            psq(1) = psq(2);
+            psq(2) = ptmp;
+        }
+    }
+
     /*!
     * Computes the Kallen function defined as:
     * \f[
@@ -42,77 +162,6 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput Kallen(TOutput const& p1, TOutput const& p2, TOutput const& p3) {
         return Kokkos::sqrt(ql::Kallen2<TOutput, TMass, TScale>(p1,p2,p3));
     }
-
-
-    /*!
-    * Computes the finite triangle with all internal masses zero.
-    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools implementation \cite Hahn:2006qw.
-    * \param res the output object for the finite part.
-    * \param xpi an array with masses and momenta squared
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void TIN0(
-        const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6],
-        const int i) {
-
-
-    }
-
-
-    /*!
-    * Computes the finite triangle with all internal masses zero.
-    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
-    * \param res the output object for the finite part.
-    * \param xpi an array with masses and momenta squared
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void TIN1(
-        const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6], 
-        const TMass (&sxpi)[6],
-        const int &massive,
-        const int i) {
-
-    }
-
-
-    /*!
-    * Computes the finite triangle with all internal masses zero.
-    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
-    * \param res the output object for the finite part.
-    * \param xpi an array with masses and momenta squared
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void TIN2(
-        const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6], 
-        const TMass (&sxpi)[6],
-        const int &massive,
-        const int i) {
-
-    }
-
-
-    /*!
-    * Computes the finite triangle with all internal masses zero.
-    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
-    * \param res the output object for the finite part.
-    * \param xpi an array with masses and momenta squared
-    */
-    template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION
-    void TIN3(
-        const Kokkos::View<TOutput* [3]>& res,
-        const TMass (&xpi)[6], 
-        const TMass (&sxpi)[6],
-        const int &massive,
-        const int i) {
-
-    }    
 
 
     /*!
@@ -353,6 +402,279 @@ namespace ql
         }
     
         res /= (a * sm2 * sm3 * sm4);
+
+    }
+
+    /*!
+    * Computes the finite triangle with all internal masses zero.
+    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools implementation \cite Hahn:2006qw.
+    * \param res the output object for the finite part.
+    * \param xpi an array with masses and momenta squared
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    void TIN0(const TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
+
+        const TMass m1sq = xpi(0);
+        const TMass m2sq = xpi(1);
+        const TMass m3sq = xpi(2);
+
+        if (ql::iszero<TOutput, TMass, TScale>(m1sq - m2sq) && ql::iszero<TOutput, TMass, TScale>(m2sq - m3sq))
+            res = -TOutput(0.5) / m1sq;
+        else if (ql::iszero<TOutput, TMass, TScale>(m1sq - m2sq))
+            res = TOutput((m3sq * Kokkos::log(m2sq / m3sq) + m3sq - m2sq) / ql::kPow<TOutput, TMass, TScale>(m3sq - m2sq, 2));
+        else if (ql::iszero<TOutput, TMass, TScale>(m2sq - m3sq))
+            res = TOutput((m1sq * Kokkos::log(m3sq / m1sq) + m1sq - m3sq) / ql::kPow<TOutput, TMass, TScale>(m1sq - m3sq, 2));
+        else if (ql::iszero<TOutput, TMass, TScale>(m3sq - m1sq))
+            res = TOutput((m2sq * Kokkos::log(m1sq / m2sq) + m2sq - m1sq) / ql::kPow<TOutput, TMass, TScale>(m2sq - m1sq, 2));
+        else
+            res = TOutput( m3sq * Kokkos::log(m3sq / m1sq) / ((m1sq - m3sq) * (m3sq - m2sq)) - m2sq * Kokkos::log(m2sq / m1sq) / ((m1sq - m2sq) * (m3sq - m2sq)));
+
+    }
+
+
+    /*!
+    * Computes the finite triangle with all internal masses zero.
+    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
+    * \param res the output object for the finite part.
+    * \param xpi an array with masses and momenta squared
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    void TIN1(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+
+        if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2))))
+        {
+            const TMass s1Ds1 = xpi(0);
+            const TMass s2Ds2 = xpi(1);
+            const TMass s3Ds3 = xpi(2);
+            const TMass p3Dp3 = xpi(5);
+
+            const TOutput x0 = TOutput((s1Ds1 - s2Ds2) / p3Dp3);
+            const TMass D23 = s2Ds2 - s3Ds3;
+
+            TOutput l[2];
+            ql::solveabc<TOutput, TMass, TScale>(p3Dp3, s3Ds3 - s1Ds1 - p3Dp3, s1Ds1, l);
+
+            if (ql::iszero<TOutput, TMass, TScale>(D23))
+                res = TOutput(-(-ql::Rint<TOutput, TMass, TScale>(x0, l[0], -1) - ql::Rint<TOutput, TMass, TScale>(x0, l[1], 1)) / p3Dp3);
+            else {
+                const TOutput u0 = TOutput(s2Ds2 / D23);
+                const TScale ieps = ql::Sign(ql::Real(-D23));
+                res = -(ql::Rint<TOutput, TMass, TScale>(x0, u0, -ieps) - ql::Rint<TOutput, TMass, TScale>(x0, l[0], -1) - ql::Rint<TOutput, TMass, TScale>(x0, l[1], 1)) / p3Dp3;
+            }
+        }
+        else {
+            if (massive == 2)
+                ql::TINDNS2<TOutput, TMass, TScale>(res, sxpi);
+            else if (massive == 1)
+                ql::TINDNS1<TOutput, TMass, TScale>(res, sxpi);
+            else {
+              
+                if (ql::Real(ql::Kallen2<TOutput, TMass, TScale>(xpi(3), xpi(4), xpi(5))) < 0.0) {  // never happens with real momenta (but just in case..)
+                    
+                    const TOutput p2 = TOutput(xpi(5));
+                    TOutput m[3] = {TOutput(xpi(0)), TOutput(xpi(1)), TOutput(xpi(2))};
+
+                    m[0] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[0])));
+                    m[1] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[1])));
+                    m[2] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[2])));
+
+                    const TOutput sm0 = Kokkos::sqrt(m[0]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm2 = Kokkos::sqrt(m[2]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+
+                    const TOutput yy = -((m[0] - m[1]) - p2)/p2;
+
+                    res = -(ql::R3int<TOutput, TMass, TScale>(p2, sm0, sm2, yy) - ql::R2int<TOutput, TMass, TScale>(m[1] - m[2], m[2], yy));
+                    res /= p2;
+                }
+                else
+                    ql::TINDNS<TOutput, TMass, TScale>(res, xpi);
+            }
+        }
+
+    }
+
+
+    /*!
+    * Computes the finite triangle with all internal masses zero.
+    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
+    * \param res the output object for the finite part.
+    * \param xpi an array with masses and momenta squared
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    void TIN2(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+
+        if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2)))) {
+            
+            const TMass s1Ds1 = xpi(0);
+            const TMass s2Ds2 = xpi(1);
+            const TMass s3Ds3 = xpi(2);
+            const TMass p2Dp2 = xpi(4);
+            const TMass p3Dp3 = xpi(5);
+
+            const TOutput z0 = TOutput((s1Ds1 - s2Ds2) / (p3Dp3 - p2Dp2));
+            TOutput zu[2], zl[2];
+            ql::solveabc<TOutput, TMass, TScale>(p2Dp2, s3Ds3 - s2Ds2 - p2Dp2, s2Ds2, zu);
+            ql::solveabc<TOutput, TMass, TScale>(p3Dp3, s3Ds3 - s1Ds1 - p3Dp3, s1Ds1, zl);
+
+            if (ql::iszero<TOutput, TMass, TScale>(p2Dp2 - p3Dp3)) {
+                res = TOutput(-(ql::Zlogint<TOutput, TMass, TScale>(zu[0], -1) + ql::Zlogint<TOutput, TMass, TScale>(zu[1], 1) - ql::Zlogint<TOutput, TMass, TScale>(zl[0], -1) + ql::Zlogint<TOutput, TMass, TScale>(zl[1], 1)) / (s2Ds2 - s1Ds1));
+            }
+            else {
+                res = TOutput(-(ql::Rint<TOutput, TMass, TScale>(z0, zu[0], -1) + ql::Rint<TOutput, TMass, TScale>(z0, zu[1], 1) - ql::Rint<TOutput, TMass, TScale>(z0, zl[0], -1)-ql::Rint<TOutput, TMass, TScale>(z0, zl[1], 1)) / (p3Dp3 - p2Dp2));
+            }
+        }
+        else {
+            if (massive == 2)
+                ql::TINDNS2<TOutput, TMass, TScale>(res, sxpi);
+            else if (massive == 1)
+                ql::TINDNS1<TOutput, TMass, TScale>(res, sxpi);
+            else {
+
+                TOutput K2 = ql::Kallen2<TOutput, TMass, TScale>(xpi(3), xpi(4), xpi(5));
+                if (ql::Real(K2) < 0.0)
+                {
+                    const TOutput p[2] = {TOutput(xpi(4)), TOutput(xpi(5))};
+                    TOutput m[3] = {TOutput(xpi(0)), TOutput(xpi(1)), TOutput(xpi(2))};
+
+                    if (p[0] == p[1]) Kokkos::printf("Triangle::TIN2 threshold singularity\n");
+
+                    m[0] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[0])));
+                    m[1] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[1])));
+                    m[2] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[2])));
+
+                    const TOutput sm0 = Kokkos::sqrt(m[0]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm1 = Kokkos::sqrt(m[1]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm2 = Kokkos::sqrt(m[2]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+
+                    const TOutput yy = ((m[0] - m[1]) - p[1] + p[0]) / (p[0] - p[1]);
+
+                    res = ql::R3int<TOutput, TMass, TScale>(p[1], sm0, sm2, yy) - ql::R3int<TOutput, TMass, TScale>(p[0], sm1, sm2, yy);
+                    res /= (p[0] - p[1]);
+                }
+                else
+                    ql::TINDNS<TOutput, TMass, TScale>(res,xpi);
+            }
+        }
+
+    }
+
+
+    /*!
+    * Computes the finite triangle with all internal masses zero.
+    * Formulae from 't Hooft and Veltman \cite tHooft:1978xw following the LoopTools and OneLoop implementation \cite Hahn:2006qw, \cite vanHameren:2010cp.
+    * \param res the output object for the finite part.
+    * \param xpi an array with masses and momenta squared
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    void TIN3(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+
+        if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2)))) {
+            
+            TOutput Del2[3], y[3], z[2];
+            TMass siDsi[3], piDpj[3][3], siDpj[3][3], kdel[3];
+            int jp1[3] = {1,2,0}, jm1[3] = {2,0,1};
+
+            for (int j = 0; j < 3; j++) {
+                siDsi[j] = xpi(j);
+                piDpj[j][j] = xpi(j + 3);
+                siDpj[j][j] = 0.5 * (xpi(jp1[j]) - xpi(j) - piDpj[j][j]);
+            }
+
+            for (int j = 0; j < 3; j++) {
+                piDpj[j][jp1[j]] = 0.5 * (piDpj[jm1[j]][jm1[j]] - piDpj[j][j] - piDpj[jp1[j]][jp1[j]]);
+                piDpj[jp1[j]][j] = piDpj[j][jp1[j]];
+                siDpj[j][jm1[j]] = piDpj[jm1[j]][jm1[j]] + siDpj[jm1[j]][jm1[j]];
+                siDpj[j][jp1[j]] = -piDpj[j][jp1[j]] + siDpj[jp1[j]][jp1[j]];
+            }
+
+            for (int j = 0; j < 3; j++) {
+                Del2[j] = TOutput(piDpj[j][jp1[j]] * piDpj[j][jp1[j]] - piDpj[j][j] * piDpj[jp1[j]][jp1[j]]);
+                Del2[j] = Kokkos::sqrt(Del2[j]);
+                kdel[j] = piDpj[j][j] * siDpj[jp1[j]][jp1[j]] - piDpj[j][jp1[j]] * siDpj[jp1[j]][j];
+                y[j] = TOutput((siDpj[jp1[j]][j] + kdel[j] / Del2[j]) / piDpj[j][j]);
+            }
+
+            res = TOutput(0.0);
+            for (int j = 0; j < 3; j++) {
+                const TMass a = piDpj[j][j], b = -TOutput(2.0) * siDpj[jp1[j]][j], c = siDsi[jp1[j]];
+                ql::solveabc<TOutput, TMass, TScale>(a, b, c, z);
+                res += ql::Rint<TOutput, TMass, TScale>(y[j], z[0], -1) + ql::Rint<TOutput, TMass, TScale>(y[j], z[1], 1);
+            }
+
+            res = -res / (TOutput(2.0) * Del2[0]);
+        }
+        else {
+            if (massive == 2)
+                ql::TINDNS2<TOutput, TMass, TScale>(res, sxpi);
+            else if (massive == 1)
+                ql::TINDNS1<TOutput, TMass, TScale>(res, sxpi);
+            else {
+                
+                const TOutput K2 = ql::Kallen2<TOutput, TMass, TScale>(xpi(3), xpi(4), xpi(5));
+                if (ql::Real(K2) < 0.0) {
+                    
+                    const TOutput p[3] = {TOutput(xpi(3)), TOutput(xpi(4)), TOutput(xpi(5))};
+                    TOutput m[3] = {TOutput(xpi(0)), TOutput(xpi(1)), TOutput(xpi(2))};
+
+                    m[0] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[0])));
+                    m[1] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[1])));
+                    m[2] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[2])));
+
+                    const TOutput alpha = Kokkos::sqrt(K2) + ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm0 = Kokkos::sqrt(m[0]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm1 = Kokkos::sqrt(m[1]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+                    const TOutput sm2 = Kokkos::sqrt(m[2]) - ql::Constants::_ieps2<TOutput, TMass, TScale>();
+
+                    res = -(ql::R3int<TOutput, TMass, TScale>(p[0], sm0, sm1, m[1] - m[2] + p[1], p[2] - p[0] - p[1], p[1], alpha)
+                          - ql::R3int<TOutput, TMass, TScale>(p[2], sm0, sm2, -(m[0] - m[1]) + p[2] - p[1], p[1] - p[0] - p[2], p[0], alpha)
+                          + ql::R3int<TOutput, TMass, TScale>(p[1], sm1, sm2, -(m[0] - m[1]) + p[2] - p[1], p[0] + p[1] - p[2], p[0], alpha));
+
+                    res /= alpha;
+                }
+                else
+                    ql::TINDNS<TOutput, TMass, TScale>(res,xpi);
+            }
+        }
+
+    }    
+
+
+    /*!
+    * Parses finite triangle integrals. Formulae from 't Hooft and Veltman \cite tHooft:1978xw
+    * \param res output object res[0,1,2] the coefficients in the Laurent series
+    * \param xpi an array with masses and momenta squared.
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    void T0(
+        const Kokkos::View<TOutput* [3]>& res,
+        const Kokkos::View<TMass[6]>& xpi,
+        const int &massive,
+        const int i) {
+
+        // Set poles to zero
+        res(i,1) = TOutput(0.0);
+        res(i,2) = TOutput(0.0);
+
+        // Sort
+        Kokkos::View<TMass[6]> ypi;
+        ql::TriSort2<TOutput, TMass, TScale>(xpi, ypi);
+
+        const bool zypi3 = ql::iszero<TOutput, TMass, TScale>(ypi(3));
+        const bool zypi4 = ql::iszero<TOutput, TMass, TScale>(ypi(4));
+
+        // Trigger the finite topology
+        if (zypi3 && zypi4 && ql::iszero<TOutput, TMass, TScale>(ypi(5)))
+            ql::TIN0<TOutput, TMass, TScale>(res(i,0), ypi);
+        else if (zypi3 && zypi4)
+            ql::TIN1<TOutput, TMass, TScale>(res(i,0), ypi, xpi, massive);
+        else if (zypi3)
+            ql::TIN2<TOutput, TMass, TScale>(res(i,0), ypi, xpi, massive);
+        else
+            ql::TIN3<TOutput, TMass, TScale>(res(i,0), ypi, xpi, massive);
 
     }
 

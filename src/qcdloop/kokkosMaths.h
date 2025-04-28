@@ -157,16 +157,32 @@ namespace ql
         return x / Kokkos::abs(x);
     }
 
-    template<typename TOutput>
-    KOKKOS_INLINE_FUNCTION TOutput Max(TOutput const& a, TOutput const& b) {
+    
+    KOKKOS_INLINE_FUNCTION double Max(double const& a, double const& b) {
         if (Kokkos::abs(a) > Kokkos::abs(b)) 
             return a;
         else 
             return b;
     }
 
-    template<typename TOutput>
-    KOKKOS_INLINE_FUNCTION TOutput Min(TOutput const& a, TOutput const& b) {
+
+    KOKKOS_INLINE_FUNCTION complex Max(complex const& a, complex const& b) {
+        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+            return a;
+        else 
+            return b;
+    }
+
+    
+    KOKKOS_INLINE_FUNCTION double Min(double const& a, double const& b) {
+        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+            return b;
+        else 
+            return a;
+    }
+
+
+    KOKKOS_INLINE_FUNCTION complex Min(complex const& a, complex const& b) {
         if (Kokkos::abs(a) > Kokkos::abs(b)) 
             return b;
         else 
