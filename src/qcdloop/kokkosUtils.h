@@ -202,14 +202,14 @@ namespace ql
         TMass B1 = 0.0, B2 = 0.0, B0 = 0.0;
         Kokkos::View<double*> _C = ql::Constants::_C();
 
-        Kokkos::parallel_for("Read _C in reverse", _C.extent(0), KOKKOS_LAMBDA(int i) {
-    
-            int index = (_C.extent(0) - 1) - i;
-            B0 = _C(index) + ALFA * B1 - B2;
+        
+        for (size_t i = _C.extent(0) - 1; i >= 0; --i) {
+            
+            B0 = _C(i) + ALFA * B1 - B2;
             B2 = B1;
             B1 = B0;
 
-        });
+        }
 
         return -(S * (B0 - H * B2) + A);
 
@@ -531,7 +531,7 @@ namespace ql
         z[1 - i_in] = TOutput(1.0) - z_in;
 
         TOutput ltspence;
-        if (ql::Real(z(0)) < 0.5){
+        if (ql::Real(z[0]) < 0.5){
             if (Kokkos::abs(z[0]) < 1.0)
                 ltspence = ql::ltli2series<TOutput, TMass, TScale>(z[1],s);
             else {
@@ -589,12 +589,12 @@ namespace ql
     /*!
     * \param z2 input arguments
     * \param im2 input signs.
-    * \return the difference of cspence functions
+    * \return the difference of cspence functions 
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION TOutput xspence(Kokkos::View<const TOutput[2]> &z1, Kokkos::View<const TScale[2]> &im1, TOutput const& z2, TScale const& im2) { 
+    KOKKOS_INLINE_FUNCTION TOutput xspence(TOutput const (&z1)[2], TScale const (&im1)[2], TOutput const& z2, TScale const& im2) { 
         
-        return ql::cspence<TOutput, TMass, TScale>(z1(1), im1(1), z2, im2) - ql::cspence<TOutput, TMass, TScale>(z1(0), im1(0), z2, im2);
+        return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2);
 
     }
     
@@ -791,7 +791,7 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, Kokkos::View<TOutput[2]> &z) {
+    KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, TOutput (&z)[2]) {
         const TMass discr = b * b - TMass(4.0) * a * c;
 
         if (ql::iszero<TOutput, TMass, TScale>(a)) Kokkos::printf("solveabc -- equation is not quadratic");
@@ -800,27 +800,27 @@ namespace ql
             
             const TMass sgnb = ql::Sign(ql::Real(b));
             if (ql::iszero<TOutput, TMass, TScale>(ql::Real(b))) {
-                z(0) = -(TOutput(b) - Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
-                z(1) = -(TOutput(b) + Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
+                z[0] = -(TOutput(b) - Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
+                z[1] = -(TOutput(b) + Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
             }
             else {
                 if (ql::Real(discr) > 0) {
                     const TMass q = -0.5 * (b + sgnb * Kokkos::sqrt(discr));
                     if (ql::Real(b) > 0) {
-                        z(0) = TOutput(c / q);
-                        z(1) = TOutput(q / a);
+                        z[0] = TOutput(c / q);
+                        z[1] = TOutput(q / a);
                     }
                     else {
-                        z(0) = TOutput(q / a);
-                        z(1) = TOutput(c / q);
+                        z[0] = TOutput(q / a);
+                        z[1] = TOutput(c / q);
                     }
                 }
                 else {
-                    z(1) = -(TOutput(b) + sgnb * Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
-                    z(0) = Kokkos::conj(z(1));
+                    z[1] = -(TOutput(b) + sgnb * Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
+                    z[0] = Kokkos::conj(z[1]);
                     if (ql::Real(b) < 0) {
-                        z(0) = z(1);
-                        z(1) = Kokkos::conj(z(0));
+                        z[0] = z[1];
+                        z[1] = Kokkos::conj(z[0]);
                     }
                 }
             }
@@ -829,12 +829,12 @@ namespace ql
             TOutput qq = -TOutput(b) + Kokkos::sqrt(TOutput(discr));
             TOutput hh = -TOutput(b) - Kokkos::sqrt(TOutput(discr));
 
-            z(0) = qq * TOutput(0.5) / TOutput(a);
-            z(1) = (TOutput(2.0) * TOutput(c)) / qq;
+            z[0] = qq * TOutput(0.5) / TOutput(a);
+            z[1] = (TOutput(2.0) * TOutput(c)) / qq;
 
-            if (ql::Imag(z(0)) > 0.0) {
-                z(0) = hh * TOutput(0.5) / TOutput(a);
-                z(1) = (TOutput(2.0) * TOutput(c)) / hh;
+            if (ql::Imag(z[0]) > 0.0) {
+                z[0] = hh * TOutput(0.5) / TOutput(a);
+                z[1] = (TOutput(2.0) * TOutput(c)) / hh;
             }
         }
     }
@@ -849,24 +849,24 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, Kokkos::View<TOutput[2]> &z) {
+    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, TOutput (&z)[2]) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
-            z(0) = - c / b; z(1) = z(0);
+            z[0] = - c / b; z[1] = z[0];
         }
         else if (c == TOutput(0.0)) {
-            z(0) = d / a; z(1) = TOutput(0.0);
+            z[0] = d / a; z[1] = TOutput(0.0);
         }
         else {
             const TOutput up = - b + d;
             const TOutput dn = - b - d;
             if (Kokkos::abs(up) >= Kokkos::abs(dn)) {
-                z(0) = TOutput(0.5) * up / a;
-                z(1) = TOutput(2.0) * c / up;
+                z[0] = TOutput(0.5) * up / a;
+                z[1] = TOutput(2.0) * c / up;
             }
             else {
-                z(1) = TOutput(0.5) * dn / a;
-                z(0) = TOutput(2.0) * c / dn;
+                z[1] = TOutput(0.5) * dn / a;
+                z[0] = TOutput(2.0) * c / dn;
             }
         }
     }
@@ -881,25 +881,25 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, Kokkos::View<TOutput[2]> &z) {
+    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput (&z)[2]) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
-            z(0) = -c / b; z(1) = z(0);
+            z[0] = -c / b; z[1] = z[0];
         }
         else if (c == TOutput(0.0)) {
-            z(0) = TOutput(0.0); z(1) = TOutput(0.0);
+            z[0] = TOutput(0.0); z[1] = TOutput(0.0);
         }
         else {
             const TOutput d = Kokkos::sqrt(b * b - 4.0 * a * c);
             const TOutput up = - b + d;
             const TOutput dn = - b - d;
             if (Kokkos::abs(up) >= Kokkos::abs(dn)) {
-                z(0) = TOutput(0.5) * up / a;
-                z(1) = TOutput(2.0) * c / up;
+                z[0] = TOutput(0.5) * up / a;
+                z[1] = TOutput(2.0) * c / up;
             }
             else {
-                z(1) = TOutput(0.5) * dn / a;
-                z(0) = TOutput(2.0) * c / dn;
+                z[1] = TOutput(0.5) * dn / a;
+                z[0] = TOutput(2.0) * c / dn;
             }
         }
     }

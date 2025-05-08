@@ -14,19 +14,20 @@ namespace ql
 
     using complex = Kokkos::complex<double>;
 
-    const int isort[6][6] = {
-        {0,1,2,3,4,5},
-        {1,2,0,4,5,3},
-        {2,0,1,5,3,4},
-        {1,0,2,3,5,4},
-        {0,2,1,5,4,3},
-        {2,1,0,4,3,5}
-    };
+    
+    static Kokkos::View<int**> isort() {
 
-    Kokkos::View<int[6][6]> d_isort("isort");
+        const int isort[6][6] = {
+            {0,1,2,3,4,5},
+            {1,2,0,4,5,3},
+            {2,0,1,5,3,4},
+            {1,0,2,3,5,4},
+            {0,2,1,5,4,3},
+            {2,1,0,4,3,5}
+        };
+    
+        Kokkos::View<int**> d_isort("isort", 6, 6);
 
-
-    void init_isort() {
         auto h_isort = Kokkos::create_mirror(d_isort);
 
         for (int i = 0; i < 6; ++i) 
@@ -34,6 +35,8 @@ namespace ql
                 h_isort(i,j) = isort[i][j];
     
         Kokkos::deep_copy(d_isort, h_isort);
+
+        return d_isort;
     }
 
 
@@ -90,6 +93,8 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale> 
     KOKKOS_INLINE_FUNCTION void TriSort2(const Kokkos::View<TMass[6]>& xpi, Kokkos::View<TMass[6]>& ypi) {
+
+        Kokkos::View<int**> isort = ql::isort();
         const TScale p1sq = Kokkos::abs(xpi(3));
         const TScale p2sq = Kokkos::abs(xpi(4));
         const TScale p3sq = Kokkos::abs(xpi(5));
@@ -104,7 +109,7 @@ namespace ql
         else j = 0;
 
         for (size_t k = 0; k < 6; k++)
-            ypi(k) = xpi(d_isort(j,k));
+            ypi(k) = xpi(isort(j,k));
     }
 
 
@@ -172,7 +177,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TINDNS(const TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
+    void TINDNS(TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
 
         TOutput m1 = xpi(0);
         TOutput m2 = xpi(1);
@@ -256,7 +261,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TINDNS2(const TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
+    void TINDNS2(TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
 
         TOutput m2 = xpi(1);
         TOutput m4 = xpi(2);
@@ -339,7 +344,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TINDNS1(const TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
+    void TINDNS1(TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
 
         TOutput m4 = xpi(2);
         TOutput p2 = TOutput(xpi(3));
@@ -413,7 +418,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TIN0(const TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
+    void TIN0(TOutput& res, const Kokkos::View<TMass[6]>& xpi) {
 
         const TMass m1sq = xpi(0);
         const TMass m2sq = xpi(1);
@@ -441,7 +446,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TIN1(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+    void TIN1(TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
 
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2))))
         {
@@ -504,7 +509,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TIN2(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+    void TIN2(TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
 
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2)))) {
             
@@ -570,7 +575,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
-    void TIN3(const TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
+    void TIN3(TOutput& res, const Kokkos::View<TMass[6]>& xpi, const Kokkos::View<TMass[6]>& sxpi, const int &massive) {
 
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(0))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(1))) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi(2)))) {
             
@@ -600,7 +605,7 @@ namespace ql
 
             res = TOutput(0.0);
             for (int j = 0; j < 3; j++) {
-                const TMass a = piDpj[j][j], b = -TOutput(2.0) * siDpj[jp1[j]][j], c = siDsi[jp1[j]];
+                const TMass a = piDpj[j][j], b = -2.0 * siDpj[jp1[j]][j], c = siDsi[jp1[j]];
                 ql::solveabc<TOutput, TMass, TScale>(a, b, c, z);
                 res += ql::Rint<TOutput, TMass, TScale>(y[j], z[0], -1) + ql::Rint<TOutput, TMass, TScale>(y[j], z[1], 1);
             }
@@ -649,6 +654,7 @@ namespace ql
     * \param xpi an array with masses and momenta squared.
     */
     template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
     void T0(
         const Kokkos::View<TOutput* [3]>& res,
         const Kokkos::View<TMass[6]>& xpi,

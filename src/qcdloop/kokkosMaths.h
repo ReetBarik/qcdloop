@@ -112,7 +112,7 @@ namespace ql
         KOKKOS_INLINE_FUNCTION static double _reps() { return 1e-16; }
 
         template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _ieps2() { return TOutput{0.0, _reps() * _reps()}; }
+        KOKKOS_INLINE_FUNCTION static TOutput _ieps2() { return TOutput{0.0, _reps() * _reps()}; }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _2ipi() { return TOutput{0.0, 2.0 * M_PI}; }
