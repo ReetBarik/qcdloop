@@ -411,9 +411,9 @@ namespace ql
     * \return
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION TOutput xeta(Kokkos::View<const TOutput[2]> &z1, Kokkos::View<const TScale[2]> &im1, TOutput const& z2, TScale const& im2, TScale const& im12, Kokkos::View<const TOutput[2]> &l1) {  
+    KOKKOS_INLINE_FUNCTION TOutput xeta(const Kokkos::Array<TOutput, 2> &z1, const Kokkos::Array<TScale, 2> &im1, TOutput const& z2, TScale const& im2, TScale const& im12, const Kokkos::Array<TOutput, 2> &l1) {  
         
-            return l1(1) * TOutput(ql::eta(z1(1), im1(1), z2, im2, im12)) - l1(0) * TOutput(ql::eta(z1(0), im1(0), z2, im2, im12));
+            return l1[1] * TOutput(ql::eta(z1[1], im1[1], z2, im2, im12)) - l1[0] * TOutput(ql::eta(z1[0], im1[0], z2, im2, im12));
     }
     
 
@@ -454,9 +454,9 @@ namespace ql
     * \return
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION TOutput xetatilde(Kokkos::View<const TOutput[2]> &z1, Kokkos::View<const TScale[2]> &im1, TOutput const& z2, TScale const& im2, Kokkos::View<const TOutput[2]> &l1) { 
+    KOKKOS_INLINE_FUNCTION TOutput xetatilde(const Kokkos::Array<TOutput, 2> &z1, const Kokkos::Array<TScale, 2> &im1, TOutput const& z2, TScale const& im2, const Kokkos::Array<TOutput, 2> &l1) { 
     
-            return l1(1) * TOutput(ql::etatilde(z1(1), im1(1), z2, im2)) - l1(0) * TOutput(ql::etatilde(z1(0), im1(0), z2, im2));
+            return l1[1] * TOutput(ql::etatilde(z1[1], im1[1], z2, im2)) - l1[0] * TOutput(ql::etatilde(z1[0], im1[0], z2, im2));
     }
 
 
@@ -592,7 +592,7 @@ namespace ql
     * \return the difference of cspence functions 
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION TOutput xspence(TOutput const (&z1)[2], TScale const (&im1)[2], TOutput const& z2, TScale const& im2) { 
+    KOKKOS_INLINE_FUNCTION TOutput xspence(Kokkos::Array<TOutput, 2>& z1, Kokkos::Array<TScale, 2>& im1, TOutput const& z2, TScale const& im2) { 
         
         return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2);
 
@@ -791,7 +791,7 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, TOutput (&z)[2]) {
+    KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, Kokkos::Array<TOutput, 2>& z) {
         const TMass discr = b * b - TMass(4.0) * a * c;
 
         if (ql::iszero<TOutput, TMass, TScale>(a)) Kokkos::printf("solveabc -- equation is not quadratic");
@@ -849,7 +849,7 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, TOutput (&z)[2]) {
+    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
             z[0] = - c / b; z[1] = z[0];
@@ -881,7 +881,7 @@ namespace ql
     * \param l result [-im,+im]
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput (&z)[2]) {
+    KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
             z[0] = -c / b; z[1] = z[0];
@@ -966,8 +966,8 @@ namespace ql
         const TOutput b = (s1 + s2) * (s1 - s2) - a;
         const TOutput c = s2 * s2;
         const TOutput d = Kokkos::sqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
-        TOutput y[2]; //TODO:: change to hardcoded array of size 2
-        TOutput s[2]; //TODO:: change to hardcoded array of size 2
+        Kokkos::Array<TOutput, 2> y;
+        Kokkos::Array<TOutput, 2> s;
         TOutput res;
         ql::solveabcd<TOutput, TMass, TScale>(a, b, c, d, y);
         ql::solveabcd<TOutput, TMass, TScale>(a, t2, t3, t4, s);
@@ -1018,7 +1018,7 @@ namespace ql
         const TOutput c = s2 * s2;
         const TOutput d = Kokkos::sqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
         
-        TOutput y[2]; //TODO:: change to hardcoded array of size 2
+        Kokkos::Array<TOutput, 2> y;
         TOutput res;
         ql::solveabcd<TOutput, TMass, TScale>(a, b, c, d, y);
 
