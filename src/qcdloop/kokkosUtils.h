@@ -200,12 +200,11 @@ namespace ql
         const TMass H = Y + Y - 1.0;
         const TMass ALFA = H + H;
         TMass B1 = 0.0, B2 = 0.0, B0 = 0.0;
-        Kokkos::View<double*> _C = ql::Constants::_C();
 
         
-        for (size_t i = _C.extent(0) - 1; i >= 0; --i) {
+        for (int i = 18; i >= 0; --i) {
             
-            B0 = _C(i) + ALFA * B1 - B2;
+            B0 = ql::Constants::_C(i) + ALFA * B1 - B2;
             B2 = B1;
             B1 = B0;
 
@@ -227,12 +226,11 @@ namespace ql
         TOutput xm = -ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - z, -isig);
         const TOutput x2 = xm * xm;
         TOutput res = xm - x2/ TOutput(4.0);
-        Kokkos::View<double*> _B = ql::Constants::_B();
 
-        for (int j = 0; j < _B.extent(0); j++)
+        for (int j = 0; j < 25; j++)
         {
             xm *= x2;
-            const TOutput n = res + xm * _B(j);
+            const TOutput n = res + xm *  ql::Constants::_B(j);
             if (n == res) return res;
             else res = n;
         }
@@ -251,11 +249,10 @@ namespace ql
         TOutput xm = -ql::cLn<TOutput, TMass, TScale>(z1, -s);
         const TOutput x2 = xm * xm;
         TOutput res = xm - x2 / TOutput(4.0);
-        Kokkos::View<double*> _B = ql::Constants::_B();
 
-        for (int i = 0; i < _B.extent(0); i++) {
+        for (int i = 0; i < 25; i++) {
             xm *= x2;
-            const TOutput n = res + xm * _B(i);
+            const TOutput n = res + xm * ql::Constants::_B(i);
             if (n == res) return res;
             else res = n;
         }
@@ -592,7 +589,7 @@ namespace ql
     * \return the difference of cspence functions 
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION TOutput xspence(Kokkos::Array<TOutput, 2>& z1, Kokkos::Array<TScale, 2>& im1, TOutput const& z2, TScale const& im2) { 
+    KOKKOS_INLINE_FUNCTION TOutput xspence(const Kokkos::Array<TOutput, 2>& z1, const Kokkos::Array<TScale, 2>& im1, TOutput const& z2, TScale const& im2) { 
         
         return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2);
 
@@ -1172,7 +1169,7 @@ namespace ql
     * ieps gives the sign of the imaginary part of -K: 1 -> +i*eps
     */
     template<typename TOutput, typename TMass, typename TScale>
-    KOKKOS_INLINE_FUNCTION void kfn(Kokkos::View<TOutput[3]> &res, TScale& ieps, TMass const& xpi, TMass const& xm, TMass const& xmp) {
+    KOKKOS_INLINE_FUNCTION void kfn(Kokkos::Array<TOutput, 3> &res, TScale& ieps, TMass const& xpi, TMass const& xm, TMass const& xmp) {
         
         if (xm == TMass(0.0) || xmp == TMass(0.0))
             Kokkos::printf("Error in kfn,xm,xmp");

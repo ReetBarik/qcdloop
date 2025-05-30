@@ -71,12 +71,9 @@ void TR(
                              ql::iszero<TOutput, TMass, TScale>(msq[2])
                             };
 
-    if (iszeros[0] && iszeros[1] && iszeros[2]) {
+    if (iszeros[0] && iszeros[1] && iszeros[2]) { 
         ql::SnglSort<TOutput, TMass, TScale>(psq);
     }   
-
-    // Kokkos::deep_copy(h_msq, msq);
-    // Kokkos::deep_copy(h_psq, psq);
 
     // calculate integral value
     const TMass Y01 = TMass(msq[0] + msq[1] - psq[0]) / TMass(2);
@@ -88,15 +85,7 @@ void TR(
         if (!iszeros[i]) massive += 1;
 
     // building xpi
-    // Kokkos::View<TMass[6]> xpi("xpi");
-    // auto h_xpi = Kokkos::create_mirror(xpi);
-
     const Kokkos::Array<TMass, 6> xpi = { msq[0], msq[1], msq[2], TMass(psq[0]), TMass(psq[1]), TMass(psq[2]) };
-
-    // for (size_t i = 0; i < 6; i++)
-    //     h_xpi(i) = xpi_values[i];
-
-    // Kokkos::deep_copy(xpi, h_xpi);
     
 
     if (massive == 3) {  // three internal masses
@@ -121,8 +110,7 @@ void TR(
             });
             
         }
-    }
-    else if (massive == 1) { // one internal masses  
+    } else if (massive == 1) { // one internal masses  
         if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01))) {
             std::cout << "T0-3" << std::endl;
             Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) {
@@ -159,8 +147,7 @@ void TR(
             
         }
         
-    }
-    else {  // zero internal masses       
+    } else {  // zero internal masses       
         if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
             std::cout << "T1" << std::endl;
             Kokkos::parallel_for("Triangle Integral 1", policy, KOKKOS_LAMBDA(const int& i) {
@@ -227,36 +214,39 @@ int main(int argc, char* argv[]) {
             // 1.0, 
             // 1.0, 
             // 1.0, 
-            // 1.0, 
+            // 1.0,
             1.0
+            // 1.0
         };
         
         std::vector<std::vector<double>> ms = {
             // {5.0, 2.0, 3.0},                        // T0-1
             // {5.0, 2.0, 0.0},                        // T0-2
-            // {5.0, 2.0, 0.0},                        // T0-2
             // {5.0, 0.0, 0.0},                        // T0-3
-            // {0.0, 0.0, 5.0},                        // T0-3
-            // {0.0, 0.0, 5.0},                        // T0-3
-            // {0.0, 0.0, 5.0},                        // T0-3
-            // {0.0, 0.0, 5.0},                        // T0-3
             // {0.0, 0.0, 0.0},                        // T0-4
-            // {0.0, 0.0, 0.0},                        // T0-4
-            {5.0, 2.0, 3.0}                         // T0-4
+            // {0.0, 0.0, 0.0},                        // T1
+            // {0.0, 0.0, 0.0},                        // T2
+            // {0.75, 0.0, 0.0},                       // T3
+            // {0.0, 1.0, 0.0},                        // T4-1
+            {0.0, 0.0, 8.5},                        // T4-2
+            // {1.1, 0.0, 0.0},                        // T5
+            // {1.0, 1.0, 0.0},                        // T6
+            // {0.0, 1.0, 0.0}                      // T0-3 denspence: argument on cut
         };
         
         std::vector<std::vector<double>> ps = {
             // {1.0, 2.0, 4.0},                         // T0-1
             // {7.0, 4.0, 10.0},                        // T0-2
-            // {7.0, 4.0, 8.0},                         // T0-2
             // {1.0, 4.0, 4.0},                         // T0-3
-            // {10.0, 8.0, 8.0},                        // T0-3
-            // {8.0, 5.0, 10.0},                        // T0-3
-            // {10.0, 5.0, 8.0},                        // T0-3
-            // {8.0, 5.0, 7.0},                         // T0-3
-            // {4.0, 6.0, 2.0},                         // T0-4
             // {4.0, 6.0, 3.0},                         // T0-4
-            {3.0, 6.0, 2.0}                          // T0-4
+            // {0.0, 0.5, 0.0},                         // T1
+            // {0.5, 0.5, 0.0},                         // T2
+            // {0.0, 0.0, 1.5},                         // T3
+            // {0.0, 1.0, 0.0},                         // T4-1
+            {0.0, 8.5, 0.0},                         // T4-2
+            // {1.1, 0.0, 1.1},                         // T5
+            // {1.0, 1.0, 1.0},                         // T6
+            // {1.0, 1.0, 1.0}                       // T0-3 denspence: argument on cut
         };
 
         // Call the integral
