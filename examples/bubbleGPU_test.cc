@@ -50,16 +50,17 @@ void BB(
     const TMass m1 = (ql::Max(m[0],m[1])) / scalefac;
     const TScale p0 = p[0] / scalefac;
     const TScale musq = mu2 / scalefac;
-    if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1))) {  // All zero result
-        Kokkos::parallel_for("Bubble Integral 01", policy, KOKKOS_LAMBDA(const int& i){       
+    if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1))) {  // All zero result 
+    
+        Kokkos::parallel_for("Bubble Integral 01", policy, KOKKOS_LAMBDA(const int& i){     // BB0-1  
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(0.0); 
             res_d(i,2) = TOutput(0.0);                                                 
         });
         
     }
-    else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) {
-        Kokkos::parallel_for("Bubble Integral 02", policy, KOKKOS_LAMBDA(const int& i){       
+    else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) { std::cout << "BB02" << std::endl;
+        Kokkos::parallel_for("Bubble Integral 02", policy, KOKKOS_LAMBDA(const int& i){      // BB0-2 
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(1.0); 
             res_d(i,2) = TOutput(0.0);                                                  
@@ -70,7 +71,7 @@ void BB(
 
         if (ql::iszero<TOutput, TMass, TScale>(std::abs((m1 - p0) / musq))) {
 
-            Kokkos::parallel_for("Bubble Integral 1", policy, KOKKOS_LAMBDA(const int& i){       
+            Kokkos::parallel_for("Bubble Integral 1", policy, KOKKOS_LAMBDA(const int& i){   // BB1     
                 ql::BB1<TOutput, TMass, TScale>(res_d, musq, m1, i);                         // I(s;0,s) s = m1, DD(4.13)                             
             });
             
@@ -78,7 +79,7 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) {
 
-            Kokkos::parallel_for("Bubble Integral 2", policy, KOKKOS_LAMBDA(const int& i){       
+            Kokkos::parallel_for("Bubble Integral 2", policy, KOKKOS_LAMBDA(const int& i){  // BB2     
                 ql::BB2<TOutput, TMass, TScale>(res_d, musq, m1, i);                        // I(0;0,m2)                            
             });
             
@@ -86,7 +87,7 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) {
 
-            Kokkos::parallel_for("Bubble Integral 3", policy, KOKKOS_LAMBDA(const int& i){       
+            Kokkos::parallel_for("Bubble Integral 3", policy, KOKKOS_LAMBDA(const int& i){  // BB3     
                 ql::BB3<TOutput, TMass, TScale>(res_d, musq, m1 - TMass(p0), i);            // I(s;0,0)                            
             });
             
@@ -94,7 +95,7 @@ void BB(
             
         else  {
 
-            Kokkos::parallel_for("Bubble Integral 4", policy, KOKKOS_LAMBDA(const int& i){       
+            Kokkos::parallel_for("Bubble Integral 4", policy, KOKKOS_LAMBDA(const int& i){  // BB4    
                 ql::BB4<TOutput, TMass, TScale>(res_d, musq, m1, p0, i);                    // I(s;0,m2)                  
             });
             
@@ -103,14 +104,14 @@ void BB(
     }
     else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) { // deal with special case, s = 0
 
-        Kokkos::parallel_for("Bubble Integral 5", policy, KOKKOS_LAMBDA(const int& i){       
+        Kokkos::parallel_for("Bubble Integral 5", policy, KOKKOS_LAMBDA(const int& i){  // BB5     
             ql::BB5<TOutput, TMass, TScale>(res_d, musq, m0, m1, i);                            
         });
         
     }
     else { 
         
-        Kokkos::parallel_for("Bubble Integral 0", policy, KOKKOS_LAMBDA(const int& i){       
+        Kokkos::parallel_for("Bubble Integral 0", policy, KOKKOS_LAMBDA(const int& i){  // BB0    
             ql::BB0<TOutput, TMass, TScale>(res_d, musq, m0, m1, p0, i);                                  
         });
         
@@ -141,7 +142,7 @@ int main(int argc, char* argv[]) {
         /**
         * Bubble
         */
-
+        int batch_size = 1;
         // Initialize params
         vector<double> mu2s = {
             std::pow(1.0,2.0),
@@ -154,30 +155,29 @@ int main(int argc, char* argv[]) {
         };
 
         vector<vector<double>> ms = {
-            {0.0, 0.0},
-            {1.0, 0.0},
-            {0.0, 1.0},
-            {0.0, 0.0},
-            {5.0, 2.0},
-            {0.0, 5.0},
-            {5.0, 3.0}
+            {0.0, 0.0},                        // BB0-1
+            {1.0, 0.0},                        // BB1
+            {0.0, 1.0},                        // BB2
+            {0.0, 0.0},                        // BB3
+            {5.0, 2.0},                        // BB0
+            {0.0, 5.0},                        // BB4
+            {5.0, 3.0}                         // BB5
         };
 
         vector<vector<double>> ps = {
-            {0.0},
-            {1.0},
-            {0.0},
-            {1.0},
-            {1.0},
-            {1.0},
-            {0.0}
+            {0.0},                        // BB0-1
+            {1.0},                        // BB1
+            {0.0},                        // BB2
+            {1.0},                        // BB3
+            {1.0},                        // BB0
+            {1.0},                        // BB4
+            {0.0}                         // BB5
         };
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
-            BB<complex,double,double>(mu2s[i], ms[i], ps[i], 1);
-        }        
-        
+            BB<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size);
+        }  
     }
   
     Kokkos::finalize();

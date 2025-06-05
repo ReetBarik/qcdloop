@@ -660,7 +660,6 @@ namespace ql
         res(i,2) = TOutput(0.0);
         
         // Sort
-        // Kokkos::View<TMass[6], Kokkos::DefaultExecutionSpace::memory_space> ypi("ypi");
         Kokkos::Array<TMass, 6> ypi;
         ql::TriSort2<TOutput, TMass, TScale>(xpi, ypi); 
         
@@ -676,8 +675,6 @@ namespace ql
             res(i,0) = ql::TIN2<TOutput, TMass, TScale>(ypi, xpi, massive);
         else 
             res(i,0) = ql::TIN3<TOutput, TMass, TScale>(ypi, xpi, massive);
-
-        // res(i,0) = TOutput(0.0);
     }
 
 
@@ -822,7 +819,7 @@ namespace ql
         const TMass arg2    = -p2 / (m - p2);
         const TMass omarg2  = TMass(1.0) - arg2;
         const TOutput ct = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>());
-    
+        
         TOutput dilog2;
         if (ql::Real(omarg2) < 0.0)
             dilog2 = ct - TOutput(ql::ddilog<TOutput, TMass, TScale>(omarg2)) - Kokkos::log(arg2) * wlog;

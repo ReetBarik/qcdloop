@@ -46,7 +46,7 @@ void TR(
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
 
-    tt.start();
+    // tt.start();
 
     const TScale scalefac = ql::Max(Kokkos::abs(m[0]), ql::Max(Kokkos::abs(m[1]), ql::Max(Kokkos::abs(m[2]), ql::Max(Kokkos::abs(p[0]), ql::Max(Kokkos::abs(p[1]), Kokkos::abs(p[2]))))));
     const TScale musq = mu2 / scalefac;
@@ -89,59 +89,59 @@ void TR(
     
 
     if (massive == 3) {  // three internal masses
-        std::cout << "T0-1" << std::endl;
-        Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) {
+        
+        Kokkos::parallel_for("Triangle Integral 0-1", policy, KOKKOS_LAMBDA(const int& i) { // T0-1
             ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
         });
         
     }
     else if (massive == 2) {  // two internal masses
         if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02))) {
-            std::cout << "T6" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 6", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 6", policy, KOKKOS_LAMBDA(const int& i) { // T6
                 ql::T6<TOutput, TMass, TScale>(res_d, musq, msq[1], msq[2], psq[1], i);
             });
             
         }
         else {
-            std::cout << "T0-2" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 0-2", policy, KOKKOS_LAMBDA(const int& i) { // T0-2
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
             
         }
     } else if (massive == 1) { // one internal masses  
         if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01))) {
-            std::cout << "T0-3" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 0-3", policy, KOKKOS_LAMBDA(const int& i) { // T0-3
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
             
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
-            std::cout << "T5" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 5", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 5", policy, KOKKOS_LAMBDA(const int& i) { // T5
                 ql::T5<TOutput, TMass, TScale>(res_d, musq, msq[2], i);
             });
             
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02))) {
-            std::cout << "T4-1" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) { // T4-1
                 ql::T4<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[1], i);
             });
             
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
-            std::cout << "T4-2" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) {
-                ql::T4<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[1], i);
+            
+            Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) { // T4-2
+                ql::T4<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[2], i);
             });
             
         }
         else {
-            std::cout << "T3" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 3", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 3", policy, KOKKOS_LAMBDA(const int& i) { // T3
                 ql::T3<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[1], psq[2], i);
             });
             
@@ -149,22 +149,22 @@ void TR(
         
     } else {  // zero internal masses       
         if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
-            std::cout << "T1" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 1", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 1", policy, KOKKOS_LAMBDA(const int& i) { // T1
                 ql::T1<TOutput, TMass, TScale>(res_d, musq, psq[2], i);
             });
             
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01))) {
-            std::cout << "T2" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 2", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 2", policy, KOKKOS_LAMBDA(const int& i) { // T2
                 ql::T2<TOutput, TMass, TScale>(res_d, musq, psq[1], psq[2], i);
             });
             
         }
         else {
-            std::cout << "T0-4" << std::endl;
-            Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) {
+            
+            Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) { // T0-4
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
             
@@ -176,8 +176,10 @@ void TR(
         res_d(i,1) /= scalefac;
         res_d(i,2) /= scalefac;
     });
-    
+    // tt.printTime(tt.stop());
     Kokkos::deep_copy(res_h, res_d);
+
+    
     for (size_t i = 0; i < res_d.extent(1); i++) {
         printf("%.15f",res_h(batch_size - 1,i).real()); cout << ", ";
         printf("%.15f",res_h(batch_size - 1,i).imag()); cout << endl;
@@ -202,59 +204,59 @@ int main(int argc, char* argv[]) {
         /**
         * Triangle
         */
+        int batch_size = 1;
 
         // Initialize params
         std::vector<double> mu2s = {
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0, 
-            // 1.0,
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0, 
+            1.0,
             1.0
             // 1.0
         };
         
         std::vector<std::vector<double>> ms = {
-            // {5.0, 2.0, 3.0},                        // T0-1
-            // {5.0, 2.0, 0.0},                        // T0-2
-            // {5.0, 0.0, 0.0},                        // T0-3
-            // {0.0, 0.0, 0.0},                        // T0-4
-            // {0.0, 0.0, 0.0},                        // T1
-            // {0.0, 0.0, 0.0},                        // T2
-            // {0.75, 0.0, 0.0},                       // T3
-            // {0.0, 1.0, 0.0},                        // T4-1
+            {5.0, 2.0, 3.0},                        // T0-1
+            {5.0, 2.0, 0.0},                        // T0-2
+            {5.0, 0.0, 0.0},                        // T0-3
+            {0.0, 0.0, 0.0},                        // T0-4
+            {0.0, 0.0, 0.0},                        // T1
+            {0.0, 0.0, 0.0},                        // T2
+            {0.75, 0.0, 0.0},                       // T3
+            {0.0, 1.0, 0.0},                        // T4-1
             {0.0, 0.0, 8.5},                        // T4-2
-            // {1.1, 0.0, 0.0},                        // T5
-            // {1.0, 1.0, 0.0},                        // T6
+            {1.1, 0.0, 0.0},                        // T5
+            {1.0, 1.0, 0.0}                         // T6
             // {0.0, 1.0, 0.0}                      // T0-3 denspence: argument on cut
         };
         
         std::vector<std::vector<double>> ps = {
-            // {1.0, 2.0, 4.0},                         // T0-1
-            // {7.0, 4.0, 10.0},                        // T0-2
-            // {1.0, 4.0, 4.0},                         // T0-3
-            // {4.0, 6.0, 3.0},                         // T0-4
-            // {0.0, 0.5, 0.0},                         // T1
-            // {0.5, 0.5, 0.0},                         // T2
-            // {0.0, 0.0, 1.5},                         // T3
-            // {0.0, 1.0, 0.0},                         // T4-1
+            {1.0, 2.0, 4.0},                         // T0-1
+            {7.0, 4.0, 10.0},                        // T0-2
+            {1.0, 4.0, 4.0},                         // T0-3
+            {4.0, 6.0, 3.0},                         // T0-4
+            {0.0, 0.5, 0.0},                         // T1
+            {0.5, 0.5, 0.0},                         // T2
+            {0.0, 0.0, 1.5},                         // T3
+            {0.0, 1.0, 0.0},                         // T4-1
             {0.0, 8.5, 0.0},                         // T4-2
-            // {1.1, 0.0, 1.1},                         // T5
-            // {1.0, 1.0, 1.0},                         // T6
+            {1.1, 0.0, 1.1},                         // T5
+            {1.0, 1.0, 1.0}                          // T6
             // {1.0, 1.0, 1.0}                       // T0-3 denspence: argument on cut
         };
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
-            TR<complex,double,double>(mu2s[i], ms[i], ps[i], 1);
+            TR<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size);
         } 
 
-        
     }
     Kokkos::finalize();
     return 0;
