@@ -36,14 +36,17 @@ void BB(
     const TScale& mu2,
     vector<TMass> const& m,
     vector<TScale> const& p,
-    int batch_size) {
+    int batch_size,
+    int mode) {
 
     ql::Timer tt;
     Kokkos::View<complex* [3]> res_d("res", batch_size);
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
 
-    tt.start();
+    if (mode == 0) { // performance benchmark
+        tt.start();
+    }
     // Normalization
     const TScale scalefac = ql::Max(ql::Max(ql::Max(std::abs(p[0]), mu2), std::abs(m[0])), std::abs(m[1]));
     const TMass m0 = (ql::Min(m[0],m[1])) / scalefac;
@@ -52,6 +55,7 @@ void BB(
     const TScale musq = mu2 / scalefac;
     if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1))) {  // All zero result 
     
+        if (mode == 0) {std::cout << "Bubble Integral BB0-1" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 01", policy, KOKKOS_LAMBDA(const int& i){     // BB0-1  
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(0.0); 
@@ -59,7 +63,9 @@ void BB(
         });
         
     }
-    else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) { std::cout << "BB02" << std::endl;
+    else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) { 
+        
+        if (mode == 0) {std::cout << "Bubble Integral BB0-2" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 02", policy, KOKKOS_LAMBDA(const int& i){      // BB0-2 
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(1.0); 
@@ -71,6 +77,7 @@ void BB(
 
         if (ql::iszero<TOutput, TMass, TScale>(std::abs((m1 - p0) / musq))) {
 
+            if (mode == 0) {std::cout << "Bubble Integral BB1" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 1", policy, KOKKOS_LAMBDA(const int& i){   // BB1     
                 ql::BB1<TOutput, TMass, TScale>(res_d, musq, m1, i);                         // I(s;0,s) s = m1, DD(4.13)                             
             });
@@ -79,6 +86,7 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) {
 
+            if (mode == 0) {std::cout << "Bubble Integral BB2" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 2", policy, KOKKOS_LAMBDA(const int& i){  // BB2     
                 ql::BB2<TOutput, TMass, TScale>(res_d, musq, m1, i);                        // I(0;0,m2)                            
             });
@@ -87,6 +95,7 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) {
 
+            if (mode == 0) {std::cout << "Bubble Integral BB3" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 3", policy, KOKKOS_LAMBDA(const int& i){  // BB3     
                 ql::BB3<TOutput, TMass, TScale>(res_d, musq, m1 - TMass(p0), i);            // I(s;0,0)                            
             });
@@ -95,6 +104,7 @@ void BB(
             
         else  {
 
+            if (mode == 0) {std::cout << "Bubble Integral BB4" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 4", policy, KOKKOS_LAMBDA(const int& i){  // BB4    
                 ql::BB4<TOutput, TMass, TScale>(res_d, musq, m1, p0, i);                    // I(s;0,m2)                  
             });
@@ -104,6 +114,7 @@ void BB(
     }
     else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) { // deal with special case, s = 0
 
+        if (mode == 0) {std::cout << "Bubble Integral BB5" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 5", policy, KOKKOS_LAMBDA(const int& i){  // BB5     
             ql::BB5<TOutput, TMass, TScale>(res_d, musq, m0, m1, i);                            
         });
@@ -111,6 +122,7 @@ void BB(
     }
     else { 
         
+        if (mode == 0) {std::cout << "Bubble Integral BB0" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 0", policy, KOKKOS_LAMBDA(const int& i){  // BB0    
             ql::BB0<TOutput, TMass, TScale>(res_d, musq, m0, m1, p0, i);                                  
         });
@@ -119,13 +131,17 @@ void BB(
 
     Kokkos::deep_copy(res_h, res_d);
     
-    // tt.printTime(tt.stop());
+    if (mode == 0) { // performance benchmark
+        tt.printTime(tt.stop());
+        return;
+    }
     
     for (size_t i = 0; i < res_d.extent(1); i++) {
         printf("%.15f",res_h(batch_size - 1,i).real()); cout << ", ";
         printf("%.15f",res_h(batch_size - 1,i).imag()); cout << endl;
     }
-
+    std::cout << endl;
+    
     return;
 }
 
@@ -142,7 +158,24 @@ int main(int argc, char* argv[]) {
         /**
         * Bubble
         */
-        int batch_size = 1;
+        double batch_size_d = std::strtod(argv[1], nullptr);
+        int batch_size = static_cast<int>(batch_size_d);
+        int mode = std::atoi(argv[2]);
+        if (batch_size <= 0) {
+            std::cerr << "Batch size must be a positive integer." << std::endl;
+            return 1;
+        }
+        if (mode < 0 || mode > 1) {
+            std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
+            return 1;
+        }
+
+        if (mode == 1) {
+            batch_size = 1; // for correctness test, we only need one batch
+        } else {
+            std::cout << "Bubble Integral Performance Benchmark with batch size: " << batch_size << std::endl;
+        }
+
         // Initialize params
         vector<double> mu2s = {
             std::pow(1.0,2.0),
@@ -176,7 +209,7 @@ int main(int argc, char* argv[]) {
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
-            BB<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size);
+            BB<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
         }  
     }
   

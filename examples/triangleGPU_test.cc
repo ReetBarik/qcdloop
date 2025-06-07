@@ -39,14 +39,17 @@ void TR(
     const TScale& mu2,
     vector<TMass> const& m,
     vector<TScale> const& p,
-    int batch_size) {
+    int batch_size,
+    int mode) {
 
     ql::Timer tt;
     Kokkos::View<complex* [3]> res_d("res", batch_size);
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
-
-    // tt.start();
+    
+    if (mode == 0) { // performance benchmark
+        tt.start();
+    }
 
     const TScale scalefac = ql::Max(Kokkos::abs(m[0]), ql::Max(Kokkos::abs(m[1]), ql::Max(Kokkos::abs(m[2]), ql::Max(Kokkos::abs(p[0]), ql::Max(Kokkos::abs(p[1]), Kokkos::abs(p[2]))))));
     const TScale musq = mu2 / scalefac;
@@ -89,7 +92,8 @@ void TR(
     
 
     if (massive == 3) {  // three internal masses
-        
+
+        if (mode == 0) {std::cout << "Triangle Integral T0-1" << std::endl;}
         Kokkos::parallel_for("Triangle Integral 0-1", policy, KOKKOS_LAMBDA(const int& i) { // T0-1
             ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
         });
@@ -98,6 +102,7 @@ void TR(
     else if (massive == 2) {  // two internal masses
         if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T6" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 6", policy, KOKKOS_LAMBDA(const int& i) { // T6
                 ql::T6<TOutput, TMass, TScale>(res_d, musq, msq[1], msq[2], psq[1], i);
             });
@@ -105,6 +110,7 @@ void TR(
         }
         else {
             
+            if (mode == 0) {std::cout << "Triangle Integral T0-2" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 0-2", policy, KOKKOS_LAMBDA(const int& i) { // T0-2
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
@@ -113,6 +119,7 @@ void TR(
     } else if (massive == 1) { // one internal masses  
         if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T0-3" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 0-3", policy, KOKKOS_LAMBDA(const int& i) { // T0-3
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
@@ -120,6 +127,7 @@ void TR(
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T5" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 5", policy, KOKKOS_LAMBDA(const int& i) { // T5
                 ql::T5<TOutput, TMass, TScale>(res_d, musq, msq[2], i);
             });
@@ -127,6 +135,7 @@ void TR(
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y02))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T4-1" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) { // T4-1
                 ql::T4<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[1], i);
             });
@@ -134,6 +143,7 @@ void TR(
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T4-2" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 4", policy, KOKKOS_LAMBDA(const int& i) { // T4-2
                 ql::T4<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[2], i);
             });
@@ -141,6 +151,7 @@ void TR(
         }
         else {
             
+            if (mode == 0) {std::cout << "Triangle Integral T3" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 3", policy, KOKKOS_LAMBDA(const int& i) { // T3
                 ql::T3<TOutput, TMass, TScale>(res_d, musq, msq[2], psq[1], psq[2], i);
             });
@@ -150,6 +161,7 @@ void TR(
     } else {  // zero internal masses       
         if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01)) && ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y12))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T1" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 1", policy, KOKKOS_LAMBDA(const int& i) { // T1
                 ql::T1<TOutput, TMass, TScale>(res_d, musq, psq[2], i);
             });
@@ -157,6 +169,7 @@ void TR(
         }
         else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(Y01))) {
             
+            if (mode == 0) {std::cout << "Triangle Integral T2" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 2", policy, KOKKOS_LAMBDA(const int& i) { // T2
                 ql::T2<TOutput, TMass, TScale>(res_d, musq, psq[1], psq[2], i);
             });
@@ -164,6 +177,7 @@ void TR(
         }
         else {
             
+            if (mode == 0) {std::cout << "Triangle Integral T0-4" << std::endl;}
             Kokkos::parallel_for("Triangle Integral 0", policy, KOKKOS_LAMBDA(const int& i) { // T0-4
                 ql::T0<TOutput, TMass, TScale>(res_d, xpi, massive, i);
             });
@@ -176,14 +190,20 @@ void TR(
         res_d(i,1) /= scalefac;
         res_d(i,2) /= scalefac;
     });
-    // tt.printTime(tt.stop());
+
+
     Kokkos::deep_copy(res_h, res_d);
 
+    if (mode == 0) { // performance benchmark
+        tt.printTime(tt.stop());
+        return;
+    }
     
     for (size_t i = 0; i < res_d.extent(1); i++) {
-        printf("%.15f",res_h(batch_size - 1,i).real()); cout << ", ";
-        printf("%.15f",res_h(batch_size - 1,i).imag()); cout << endl;
+        printf("%.15f",res_h(batch_size - 1,i).real()); std::cout << ", ";
+        printf("%.15f",res_h(batch_size - 1,i).imag()); std::cout << endl;
     }
+    std::cout << endl;
 
     return;
 
@@ -204,7 +224,23 @@ int main(int argc, char* argv[]) {
         /**
         * Triangle
         */
-        int batch_size = 1;
+        double batch_size_d = std::strtod(argv[1], nullptr);
+        int batch_size = static_cast<int>(batch_size_d);
+        int mode = std::atoi(argv[2]);
+        if (batch_size <= 0) {
+            std::cerr << "Batch size must be a positive integer." << std::endl;
+            return 1;
+        }
+        if (mode < 0 || mode > 1) {
+            std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
+            return 1;
+        }
+
+        if (mode == 1) {
+            batch_size = 1; // for correctness test, we only need one batch
+        } else {
+            std::cout << "Triangle Integral Performance Benchmark with batch size: " << batch_size << std::endl;
+        }
 
         // Initialize params
         std::vector<double> mu2s = {
@@ -254,7 +290,7 @@ int main(int argc, char* argv[]) {
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
-            TR<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size);
+            TR<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
         } 
 
     }

@@ -33,7 +33,7 @@ namespace ql
     const Kokkos::View<TMass*>& m,
     const Kokkos::View<TScale*>& p,
     const int i) {
-    if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m(0)))) { // replaceing iszero() TODO::revisit for quad
+    if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m(0)))) { 
       res(i,1) = TOutput(m(0));
       res(i,0) = res(i,1) * TOutput(Kokkos::log(mu2 / m(0)) + TOutput(1.0));
     }     
