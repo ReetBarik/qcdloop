@@ -410,7 +410,7 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput xeta(const Kokkos::Array<TOutput, 2> &z1, const Kokkos::Array<TScale, 2> &im1, TOutput const& z2, TScale const& im2, TScale const& im12, const Kokkos::Array<TOutput, 2> &l1) {  
         
-            return l1[1] * TOutput(ql::eta(z1[1], im1[1], z2, im2, im12)) - l1[0] * TOutput(ql::eta(z1[0], im1[0], z2, im2, im12));
+            return l1[1] * TOutput(ql::eta<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2, im12)) - l1[0] * TOutput(ql::eta<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2, im12));
     }
     
 
@@ -431,7 +431,7 @@ namespace ql
         im1 = im1x;
 
         if (im2 != 0.0)
-            etatilde = ql::eta(c1, im1x, c2, 0.0, 0.0);
+            etatilde = ql::eta<TOutput, TMass, TScale>(c1, im1x, c2, 0.0, 0.0);
         else if ( ql::Real(c2) > 0.0)
             etatilde = 0;
         else if (im1 > 0.0 && im2x > 0.0)
@@ -453,7 +453,7 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput xetatilde(const Kokkos::Array<TOutput, 2> &z1, const Kokkos::Array<TScale, 2> &im1, TOutput const& z2, TScale const& im2, const Kokkos::Array<TOutput, 2> &l1) { 
     
-            return l1[1] * TOutput(ql::etatilde(z1[1], im1[1], z2, im2)) - l1[0] * TOutput(ql::etatilde(z1[0], im1[0], z2, im2));
+            return l1[1] * TOutput(ql::etatilde<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2)) - l1[0] * TOutput(ql::etatilde<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2));
     }
 
 
@@ -686,7 +686,7 @@ namespace ql
         else if (Kokkos::abs(arg) > 1.0) {
             const TScale arg2 = (x * y) / (v * w);
             const TOutput lnarg = TOutput(-ql::Lnrat<TOutput, TMass, TScale>(v, x) - ql::Lnrat<TOutput, TMass, TScale>(w, y));
-            const TOutput lnomarg = TOutput(Log(1.0 - arg2));
+            const TOutput lnomarg = TOutput(Kokkos::log(1.0 - arg2));
             Li2omx2 = -TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(arg2)) + lnarg * lnomarg - TOutput(0.5) * lnarg * lnarg;
         }
 

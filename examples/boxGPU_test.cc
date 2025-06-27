@@ -52,7 +52,76 @@ void BO(
         tt.start();
     }
 
-    // LOGIC TO CALL B0m-B4m goes here
+    // Normalization
+    const TScale scalefac = ql::Max(Kokkos::abs(p[4]),ql::Max(Kokkos::abs(p[5]),ql::Max(Kokkos::abs(p[0]),ql::Max(Kokkos::abs(p[1]),ql::Max(Kokkos::abs(p[2]),Kokkos::abs(p[3]))))));
+
+    Kokkos::Array<TMass, 13> xpi_temp;
+    xpi_temp[0] = m[0] / scalefac;
+    xpi_temp[1] = m[1] / scalefac;
+    xpi_temp[2] = m[2] / scalefac;
+    xpi_temp[3] = m[3] / scalefac;
+    xpi_temp[4] = TMass(p[0] / scalefac);
+    xpi_temp[5] = TMass(p[1] / scalefac);
+    xpi_temp[6] = TMass(p[2] / scalefac);
+    xpi_temp[7] = TMass(p[3] / scalefac);
+    xpi_temp[8] = TMass(p[4] / scalefac);
+    xpi_temp[9] = TMass(p[5] / scalefac);
+    xpi_temp[10] = xpi_temp[4] + xpi_temp[5] + xpi_temp[6] + xpi_temp[7] - xpi_temp[8] - xpi_temp[9];
+    xpi_temp[11] =-xpi_temp[4] + xpi_temp[5] - xpi_temp[6] + xpi_temp[7] + xpi_temp[8] + xpi_temp[9];
+    xpi_temp[12] = xpi_temp[4] - xpi_temp[5] + xpi_temp[6] - xpi_temp[7] + xpi_temp[8] + xpi_temp[9];
+
+    const Kokkos::Array<TMass, 13> xpi = {xpi_temp[0], xpi_temp[1], xpi_temp[2], xpi_temp[3],
+                                          xpi_temp[4], xpi_temp[5], xpi_temp[6], xpi_temp[7],
+                                          xpi_temp[8], xpi_temp[9], xpi_temp[10], xpi_temp[11],
+                                          xpi_temp[12]};
+    const TScale musq = mu2 / scalefac;
+
+    // Count number of internal masses
+    int massive = 0;
+    for (size_t i = 0; i < 4; i++)
+        if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(xpi[i]))) massive += 1;
+
+    // check cayley elements
+    const TMass y13 = xpi[0] + xpi[2] - xpi[8];
+    const TMass y24 = xpi[1] + xpi[3] - xpi[9];
+    if (ql::iszero<TOutput, TMass, TScale>(y13) || ql::iszero<TOutput, TMass, TScale>(y24)) {
+        std::cout << "Box::integral: Modified Cayley elements y13 or y24=0" << std::endl;
+        
+        Kokkos::parallel_for("Box Integral 00", policy, KOKKOS_LAMBDA(const int& i) {     
+            res_d(i,0) = TOutput(0.0); 
+            res_d(i,1) = TOutput(0.0); 
+            res_d(i,2) = TOutput(0.0);                                                 
+        }); 
+        
+    } else {
+        if (massive == 0) {
+            Kokkos::parallel_for("Box Integral 0m", policy, KOKKOS_LAMBDA(const int& i){        
+                ql::B0m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
+            });
+        } else if (massive == 1) {
+            Kokkos::parallel_for("Box Integral 1m", policy, KOKKOS_LAMBDA(const int& i){        
+                ql::B1m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
+            });
+        } else if (massive == 2) {
+            Kokkos::parallel_for("Box Integral 2m", policy, KOKKOS_LAMBDA(const int& i){        
+                ql::B2m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
+            });
+        } else if (massive == 3) {
+            Kokkos::parallel_for("Box Integral 3m", policy, KOKKOS_LAMBDA(const int& i){        
+                ql::B3m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
+            });
+        } else if (massive == 4) {
+            Kokkos::parallel_for("Box Integral 4m", policy, KOKKOS_LAMBDA(const int& i){        
+                ql::B4m<TOutput, TMass, TScale>(res_d, xpi, i);                                                      
+            });
+        }      
+
+        Kokkos::parallel_for("Normalize Res", policy, KOKKOS_LAMBDA(const int& i) {
+            res_d(i,0) /= (scalefac * scalefac);
+            res_d(i,1) /= (scalefac * scalefac);
+            res_d(i,2) /= (scalefac * scalefac);
+        });
+    }
 
 
     Kokkos::deep_copy(res_h, res_d);
@@ -100,7 +169,7 @@ int main(int argc, char* argv[]) {
         if (mode == 1) {
             batch_size = 1; // for correctness test, we only need one batch
         } else {
-            std::cout << "Triangle Integral Performance Benchmark with batch size: " << batch_size << std::endl;
+            std::cout << "Box Integral Performance Benchmark with batch size: " << batch_size << std::endl;
         }
 
         // Initialize params
@@ -109,16 +178,16 @@ int main(int argc, char* argv[]) {
         };
         
         std::vector<std::vector<double>> ms = {
-            {5.0, 2.0, 3.0}
+            {0.0, 0.0, 0.0, 0.0}
         };
         
         std::vector<std::vector<double>> ps = {
-            {1.0, 2.0, 4.0}
+            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0}
         };
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
-            // BO<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
+            BO<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
         } 
 
     }

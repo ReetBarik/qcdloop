@@ -126,6 +126,16 @@ namespace ql
     }
 
     template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION TMass kPow(TMass const& base, int const& exponent) {
+        TMass temp = TMass(1.0);
+
+        for (int i = 0; i < exponent; i++)
+            temp *= base;
+
+        return temp;
+    }
+
+    template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION bool iszero(TScale const& x) {
         return (x < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) ? true : false;
     }

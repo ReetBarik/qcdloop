@@ -88,6 +88,10 @@ if(GPU_ONLY)
   target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
   target_compile_options(triangleGPU_test PRIVATE -w)
 
+  add_executable(boxGPU_test examples/boxGPU_test.cc)
+  target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
+  target_compile_options(boxGPU_test PRIVATE -w)
+
 else()
 
   IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
