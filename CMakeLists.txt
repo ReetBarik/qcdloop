@@ -1,6 +1,4 @@
 cmake_minimum_required(VERSION 3.12...3.31)
-option(GPU_ONLY "Compile for GPU using Kokkos" ON)
-
 
 # Disable the use of RPATHS - we probably are not
 # that interested in relocatable binaries and it
@@ -16,7 +14,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
-project(qcdloop)
+project(qcdloop-kokkos)
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,105 +67,24 @@ configure_file(
   "${PROJECT_SOURCE_DIR}/src/qcdloop.pc"
   )
 
-if(GPU_ONLY)
+# libqcdloop configuration
+include_directories(src/qcdloop src)
 
-  # libqcdloop configuration
-  include_directories(src/qcdloop src)
-  
-  find_package(Kokkos REQUIRED)
+find_package(Kokkos REQUIRED)
 
-  add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
-  target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
-  target_compile_options(tadpoleGPU_test PRIVATE -w)
+add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
+target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(tadpoleGPU_test PRIVATE -w)
 
-  add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
-  target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
-  target_compile_options(bubbleGPU_test PRIVATE -w)
+add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
+target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(bubbleGPU_test PRIVATE -w)
 
-  add_executable(triangleGPU_test examples/triangleGPU_test.cc)
-  target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
-  target_compile_options(triangleGPU_test PRIVATE -w)
+add_executable(triangleGPU_test examples/triangleGPU_test.cc)
+target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(triangleGPU_test PRIVATE -w)
 
-  add_executable(boxGPU_test examples/boxGPU_test.cc)
-  target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
-  target_compile_options(boxGPU_test PRIVATE -w)
+add_executable(boxGPU_test examples/boxGPU_test.cc)
+target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(boxGPU_test PRIVATE -w)
 
-else()
-
-  IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-  set(QUADMATH_NAMES ${QUADMATH_NAMES} libquadmath.so quadmath)
-  find_library(QUADMATH_LIBRARY
-    NAMES ${QUADMATH_NAMES}
-    PATHS /usr/lib64/atlas /usr/lib/atlas
-          /usr/lib64 /usr/lib /usr/local/lib64
-          /usr/local/lib /usr/x86_64-linux-gnu/*
-          /usr/lib/gcc/x86_64-linux-gnu/*
-          /usr/lib/gcc/x86_64-redhat-linux/*
-          /usr/lib/gcc/x86_64-pc-linux-gnu/*
-          /soft/compilers/gcc/x86_64-suse-linux/14.1.0/lib64
-          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
-  )
-
-  if(QUADMATH_LIBRARY)
-    set(QUADMATH_LIBRARIES ${QUADMATH_LIBRARY})
-    set(QUADMATH_FOUND "YES")
-  else(QUADMATH_LIBRARY)
-    set(QUADMATH_FOUND "NO")
-  endif(QUADMATH_LIBRARY)
-
-  if(QUADMATH_FOUND)
-    if(NOT QUADMATH_FIND_QUIETLY)
-      message(STATUS "Found QUADMATH: ${QUADMATH_LIBRARIES}")
-    endif(NOT QUADMATH_FIND_QUIETLY)
-  else(QUADMATH_FOUND)
-    if(QUADMATH_FIND_REQUIRED)
-      message(FATAL_ERROR "Could not find QuadMath")
-    endif(QUADMATH_FIND_REQUIRED)
-  endif(QUADMATH_FOUND)
-  endif()
-  # libqcdloop configuration
-  include_directories(src/qcdloop src)
-  FILE(GLOB_RECURSE Headers "src/qcdloop/*.h")
-  add_library(qcdloop SHARED src/box.cc
-                          src/bubble.cc
-                          src/cache.cc
-                          src/qcdloop.cc
-                          src/tadpole.cc
-                          src/tools.cc
-                          src/topology.cc
-                          src/triangle.cc
-                          src/types.cc
-                          src/wrapper.cc
-                          ${Headers}
-  )
-
-  target_link_libraries(qcdloop ${QUADMATH_LIBRARY})
-  install(FILES ${CMAKE_BINARY_DIR}/src/qcdloop-config
-    DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ
-    GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-  install(FILES ${PROJECT_SOURCE_DIR}/src/qcdloop.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-  install(DIRECTORY src/qcdloop DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-  install(TARGETS qcdloop DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-  # enable disable fortran/wrapper (to avoid name conflicts with ql1.x)
-  option(ENABLE_FORTRAN_WRAPPER "Enable fortran wrapper" ON)
-  if(ENABLE_FORTRAN_WRAPPER)
-    add_definitions(-DQL_NAMES)
-  endif()
-
-  # qcdloop examples
-  option(ENABLE_EXAMPLES "Compile test examples" ON)
-  if(ENABLE_EXAMPLES)
-    add_executable(cache_test examples/cache_test.cc)
-    target_link_libraries(cache_test qcdloop ${QUADMATH_LIBRARIES})
-    set_target_properties(cache_test PROPERTIES LINK_FLAGS "-Wl,-rpath,./")
-
-    add_executable(cmass_test examples/cmass_test.cc)
-    target_link_libraries(cmass_test qcdloop ${QUADMATH_LIBRARIES})
-    set_target_properties(cmass_test PROPERTIES LINK_FLAGS "-Wl,-rpath,./")
-
-    add_executable(trigger_test examples/trigger_test.cc)
-    target_link_libraries(trigger_test qcdloop ${QUADMATH_LIBRARIES})
-    set_target_properties(trigger_test PROPERTIES LINK_FLAGS "-Wl,-rpath,./")
-  endif()
-endif()

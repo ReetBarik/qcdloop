@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
-#include "qcdloop/exceptions.h"
 #include "qcdloop/timer.h"
 #include "qcdloop/tadpoleGPU.h"
 
@@ -61,7 +60,7 @@ void TP(
     m_h(0) = m[0];  
     Kokkos::deep_copy(m_d, m_h);
 
-    if (mu2_d < 0) throw ql::RangeError("TadPole::integral","mu2 is negative!");
+    if (mu2_d < 0) Kokkos::printf("TadPole integral mu2 is negative!");
     if (mode == 0) {std::cout << "Tadpole Integral TP0" << std::endl;}
     Kokkos::parallel_for("Tadpole Integral", policy, KOKKOS_LAMBDA(const int& i){       
       ql::TP0(res_d, mu2_d, m_d, p_d, i);                                      

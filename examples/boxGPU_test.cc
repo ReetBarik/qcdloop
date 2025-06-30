@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
-#include "qcdloop/exceptions.h"
 #include "qcdloop/timer.h"
 #include "qcdloop/boxGPU.h"
 
