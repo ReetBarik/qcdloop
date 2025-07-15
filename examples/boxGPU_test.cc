@@ -8,14 +8,14 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include "qcdloop/timer.h"
 #include "qcdloop/boxGPU.h"
 
 using std::vector;
 using std::cout;
 using std::endl;
-using std::setprecision;
-using std::scientific;
+using std::string;
 using complex = Kokkos::complex<double>;
 
 
@@ -54,7 +54,7 @@ void BO(
     // Normalization
     const TScale scalefac = ql::Max(Kokkos::abs(p[4]),ql::Max(Kokkos::abs(p[5]),ql::Max(Kokkos::abs(p[0]),ql::Max(Kokkos::abs(p[1]),ql::Max(Kokkos::abs(p[2]),Kokkos::abs(p[3]))))));
 
-    Kokkos::Array<TMass, 13> xpi_temp;
+    TMass xpi_temp[13];
     xpi_temp[0] = m[0] / scalefac;
     xpi_temp[1] = m[1] / scalefac;
     xpi_temp[2] = m[2] / scalefac;
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
         */
 
         /**
-        * Triangle
+        * Box
         */
         double batch_size_d = std::strtod(argv[1], nullptr);
         int batch_size = static_cast<int>(batch_size_d);
@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Batch size must be a positive integer." << std::endl;
             return 1;
         }
-        if (mode < 0 || mode > 1) {
+        if (!(mode == 0 || mode == 1)) {
             std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
             return 1;
         }
@@ -173,19 +173,108 @@ int main(int argc, char* argv[]) {
 
         // Initialize params
         std::vector<double> mu2s = {
+            1.0,
+            1.0, 
+            1.0,
+            1.0, 
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            // 1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
             1.0
         };
         
         std::vector<std::vector<double>> ms = {
-            {0.0, 0.0, 0.0, 0.0}
+            {0.0, 0.0, 0.0, 0.0},  // B00
+            {0.0, 0.0, 0.0, 0.0},  // B0m - BIN0
+            {1.0, 0.0, 0.0, 0.0},  // B1m - BIN1
+            {1.0, 1.0, 0.0, 0.0},  // B2m - BIN2
+            {0.0, 1.0, 1.0, 1.0},  // B3m - BIN3
+            {1.0, 1.0, 1.0, 1.0},  // B4m - BIN4
+            {0.0, 0.0, 0.0, 0.0},  // B0m - B1
+            {0.0, 0.0, 0.0, 0.0},  // B0m - B2
+            {0.0, 0.0, 0.0, 0.0},  // B0m - B3
+            {0.0, 0.0, 0.0, 0.0},  // B0m - B4
+            {0.0, 0.0, 0.0, 0.0},  // B0m - B5
+            {1.0, 0.0, 0.0, 0.0},  // B1m - B6
+            {1.0, 0.0, 0.0, 0.0},  // B1m - B7 
+            {1.0, 0.0, 0.0, 0.0},  // B1m - B8
+            {0.0, 0.0, 1.0, 0.0},  // B1m - B9
+            {0.0, 1.0, 0.0, 0.0},  // B1m - B10 
+            // {0.0, 1.0, 0.0, 1.0},  // B2m - B11
+            {1.0, 1.0, 0.0, 0.0},  // B2m - B12
+            {1.0, 1.0, 0.0, 0.0},  // B2m - B13
+            {0.0, 1.0, 0.0, 1.0},  // B2m - B14
+            {0.0, 2.0, 0.0, 3.0},  // B2m - B15
+            {0.0, 1.0, 1.0, 1.0},  // B3m - B16
         };
         
         std::vector<std::vector<double>> ps = {
-            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0}
+            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B00
+            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B0m - BIN0
+            {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B1m - BIN1
+            {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B2m - BIN2
+            {2.0, 3.0, 4.0, 5.0, 6.0, 7.0},  // B3m - BIN3
+            {3.0, 4.0, 5.0, 6.0, 7.0, 8.0},  // B4m - BIN4
+            {0.0, 0.0, 0.0, 0.0, 3.0, 1.0},  // B0m - B1
+            {1.0, 0.0, 0.0, 0.0, 3.0, 1.0},  // B0m - B2
+            {0.0, 1.0, 0.0, 2.0, 3.0, 1.0},  // B0m - B3
+            {1.0, 2.0, 0.0, 0.0, 3.0, 4.0},  // B0m - B4
+            {1.0, 2.0, 3.0, 0.0, 4.0, 5.0},  // B0m - B5
+            {1.0, 0.0, 0.0, 1.0, 2.0, 3.0},  // B1m - B6
+            {1.0, 0.0, 0.0, 0.0, 2.0, 3.0},  // B1m - B7
+            {0.0, 0.0, 0.0, 0.0, 2.0, 2.0},  // B1m - B8
+            {1.0, 1.0, 1.0, 0.0, 2.0, 2.0},  // B1m - B9
+            {0.0, 0.0, 1.0, 0.0, 2.0, 0.0},  // B1m - B10
+            // {0.0, 0.0, 0.0, 1.0, 2.0, 1.0},  // B2m - B11
+            {0.0, 0.0, 0.0, 1.0, 2.0, 0.0},  // B2m - B12
+            {2.0, 0.0, 0.0, 0.0, 2.0, 0.0},  // B2m - B13
+            {1.0, 1.0, 1.0, 1.0, 1.0, 1.0},  // B2m - B14
+            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B2m - B15
+            {1.0, 0.0, 0.0, 1.0, 0.0, 0.0},  // B3m - B16
+        };
+
+        vector<string> integrals = {
+            "Box Integral B00",    // B00
+            "Box Integral BIN0",   // BIN0
+            "Box Integral BIN1",   // BIN1
+            "Box Integral BIN2",   // BIN2
+            "Box Integral BIN3",   // BIN3
+            "Box Integral BIN4",   // BIN4
+            "Box Integral B1",     // B1
+            "Box Integral B2",     // B2
+            "Box Integral B3",     // B3
+            "Box Integral B4",     // B4
+            "Box Integral B5",     // B5
+            "Box Integral B6",     // B6
+            "Box Integral B7",     // B7
+            "Box Integral B8",     // B8
+            "Box Integral B9",     // B9
+            "Box Integral B10",    // B10
+            // "Box Integral B11",    // B11
+            "Box Integral B12",    // B12
+            "Box Integral B13",    // B13
+            "Box Integral B14",    // B14
+            "Box Integral B15",    // B15
+            "Box Integral B16",    // B16
         };
 
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
+            if (mode == 0) {std::cout << integrals[i] << std::endl;}
             BO<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
         } 
 

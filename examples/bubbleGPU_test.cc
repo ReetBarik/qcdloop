@@ -8,14 +8,14 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include "qcdloop/timer.h"
 #include "qcdloop/bubbleGPU.h"
 
 using std::vector;
+using std::string;
 using std::cout;
 using std::endl;
-using std::setprecision;
-using std::scientific;
 using complex = Kokkos::complex<double>;
 
 
@@ -53,8 +53,7 @@ void BB(
     const TScale p0 = p[0] / scalefac;
     const TScale musq = mu2 / scalefac;
     if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1))) {  // All zero result 
-    
-        if (mode == 0) {std::cout << "Bubble Integral BB0-1" << std::endl;}
+
         Kokkos::parallel_for("Bubble Integral 01", policy, KOKKOS_LAMBDA(const int& i){     // BB0-1  
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(0.0); 
@@ -63,8 +62,7 @@ void BB(
         
     }
     else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m0 / musq)) && ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) { 
-        
-        if (mode == 0) {std::cout << "Bubble Integral BB0-2" << std::endl;}
+
         Kokkos::parallel_for("Bubble Integral 02", policy, KOKKOS_LAMBDA(const int& i){      // BB0-2 
             res_d(i,0) = TOutput(0.0); 
             res_d(i,1) = TOutput(1.0); 
@@ -76,7 +74,6 @@ void BB(
 
         if (ql::iszero<TOutput, TMass, TScale>(std::abs((m1 - p0) / musq))) {
 
-            if (mode == 0) {std::cout << "Bubble Integral BB1" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 1", policy, KOKKOS_LAMBDA(const int& i){   // BB1     
                 ql::BB1<TOutput, TMass, TScale>(res_d, musq, m1, i);                         // I(s;0,s) s = m1, DD(4.13)                             
             });
@@ -85,7 +82,6 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) {
 
-            if (mode == 0) {std::cout << "Bubble Integral BB2" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 2", policy, KOKKOS_LAMBDA(const int& i){  // BB2     
                 ql::BB2<TOutput, TMass, TScale>(res_d, musq, m1, i);                        // I(0;0,m2)                            
             });
@@ -94,7 +90,6 @@ void BB(
                 
         else if (ql::iszero<TOutput, TMass, TScale>(std::abs(m1 / musq))) {
 
-            if (mode == 0) {std::cout << "Bubble Integral BB3" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 3", policy, KOKKOS_LAMBDA(const int& i){  // BB3     
                 ql::BB3<TOutput, TMass, TScale>(res_d, musq, m1 - TMass(p0), i);            // I(s;0,0)                            
             });
@@ -103,7 +98,6 @@ void BB(
             
         else  {
 
-            if (mode == 0) {std::cout << "Bubble Integral BB4" << std::endl;}
             Kokkos::parallel_for("Bubble Integral 4", policy, KOKKOS_LAMBDA(const int& i){  // BB4    
                 ql::BB4<TOutput, TMass, TScale>(res_d, musq, m1, p0, i);                    // I(s;0,m2)                  
             });
@@ -113,7 +107,6 @@ void BB(
     }
     else if (ql::iszero<TOutput, TMass, TScale>(std::abs(p0 / musq))) { // deal with special case, s = 0
 
-        if (mode == 0) {std::cout << "Bubble Integral BB5" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 5", policy, KOKKOS_LAMBDA(const int& i){  // BB5     
             ql::BB5<TOutput, TMass, TScale>(res_d, musq, m0, m1, i);                            
         });
@@ -121,7 +114,6 @@ void BB(
     }
     else { 
         
-        if (mode == 0) {std::cout << "Bubble Integral BB0" << std::endl;}
         Kokkos::parallel_for("Bubble Integral 0", policy, KOKKOS_LAMBDA(const int& i){  // BB0    
             ql::BB0<TOutput, TMass, TScale>(res_d, musq, m0, m1, p0, i);                                  
         });
@@ -164,7 +156,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Batch size must be a positive integer." << std::endl;
             return 1;
         }
-        if (mode < 0 || mode > 1) {
+        if (!(mode == 0 || mode == 1)) {
             std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
             return 1;
         }
@@ -206,8 +198,19 @@ int main(int argc, char* argv[]) {
             {0.0}                         // BB5
         };
 
+        vector<string> integrals = {
+            "Bubble Integral BB0-1", // BB0-1
+            "Bubble Integral BB1",   // BB1
+            "Bubble Integral BB2",   // BB2
+            "Bubble Integral BB3",   // BB3
+            "Bubble Integral BB0",   // BB0
+            "Bubble Integral BB4",   // BB4
+            "Bubble Integral BB5"    // BB5
+        };
+
         // Call the integral
         for (size_t i = 0; i < mu2s.size(); i++){
+            if (mode == 0) {std::cout << integrals[i] << std::endl;}
             BB<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
         }  
     }

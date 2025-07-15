@@ -137,7 +137,7 @@ namespace ql
 
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION bool iszero(TScale const& x) {
-        return (x < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) ? true : false;
+        return (Kokkos::abs(x) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) ? true : false;
     }
 
     KOKKOS_INLINE_FUNCTION double Imag(double const& x) {

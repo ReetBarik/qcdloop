@@ -14,8 +14,6 @@
 using std::vector;
 using std::cout;
 using std::endl;
-using std::setprecision;
-using std::scientific;
 using complex = Kokkos::complex<double>;
 
 /*!
@@ -61,7 +59,7 @@ void TP(
     Kokkos::deep_copy(m_d, m_h);
 
     if (mu2_d < 0) Kokkos::printf("TadPole integral mu2 is negative!");
-    if (mode == 0) {std::cout << "Tadpole Integral TP0" << std::endl;}
+    
     Kokkos::parallel_for("Tadpole Integral", policy, KOKKOS_LAMBDA(const int& i){       
       ql::TP0(res_d, mu2_d, m_d, p_d, i);                                      
     }); 
@@ -105,7 +103,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Batch size must be a positive integer." << std::endl;
         return 1;
     }
-    if (mode < 0 || mode > 1) {
+    if (!(mode == 0 || mode == 1)) {
         std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
         return 1;
     }
@@ -129,6 +127,7 @@ int main(int argc, char* argv[]) {
     };
 
     for (size_t i = 0; i < mu2s.size(); i++){
+      if (mode == 0) {std::cout << "Tadpole Integral TP0" << std::endl;}
       TP<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
     }        
     
