@@ -1704,10 +1704,10 @@ namespace ql
         const bool zY01 = ql::iszero<TOutput, TMass, TScale>(Y[0][1]);
         const bool zY03 = ql::iszero<TOutput, TMass, TScale>(Y[0][3]);
         const bool zY12 = ql::iszero<TOutput, TMass, TScale>(Y[1][2]);
-        const bool zY23 = ql::iszero<TOutput, TMass, TScale>(Y[1][3]);
+        const bool zY23 = ql::iszero<TOutput, TMass, TScale>(Y[1][2]);
 
         if (zY00 && zY22 && zY01 && zY03 && zY12 && zY23) 
-            ql::B14<TOutput, TMass, TScale>(res, Y, mu2, i);
+            ql::B14<TOutput, TMass, TScale>(res, Y, mu2, i); 
         else if (zY00 && zY22 && zY01 && zY03) 
             ql::B15<TOutput, TMass, TScale>(res, Y, mu2, i);
         else if (zY00 && zY22 && zY12 && zY23) {

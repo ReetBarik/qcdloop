@@ -173,7 +173,6 @@ int main(int argc, char* argv[]) {
 
         // Initialize params
         std::vector<double> mu2s = {
-            1.0,
             1.0, 
             1.0,
             1.0, 
@@ -195,10 +194,9 @@ int main(int argc, char* argv[]) {
             1.0,
             1.0,
             1.0
-        };
+          };
         
         std::vector<std::vector<double>> ms = {
-            {0.0, 0.0, 0.0, 0.0},  // B00
             {0.0, 0.0, 0.0, 0.0},  // B0m - BIN0
             {1.0, 0.0, 0.0, 0.0},  // B1m - BIN1
             {1.0, 1.0, 0.0, 0.0},  // B2m - BIN2
@@ -220,10 +218,9 @@ int main(int argc, char* argv[]) {
             {0.0, 1.0, 0.0, 1.0},  // B2m - B14
             {0.0, 2.0, 0.0, 3.0},  // B2m - B15
             {0.0, 1.0, 1.0, 1.0},  // B3m - B16
-        };
+          };
         
         std::vector<std::vector<double>> ps = {
-            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B00
             {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B0m - BIN0
             {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B1m - BIN1
             {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B2m - BIN2
@@ -245,7 +242,7 @@ int main(int argc, char* argv[]) {
             {1.0, 1.0, 1.0, 1.0, 1.0, 1.0},  // B2m - B14
             {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B2m - B15
             {1.0, 0.0, 0.0, 1.0, 0.0, 0.0},  // B3m - B16
-        };
+          };
 
         vector<string> integrals = {
             "Box Integral B00",    // B00
