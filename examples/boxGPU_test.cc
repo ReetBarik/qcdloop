@@ -245,7 +245,6 @@ int main(int argc, char* argv[]) {
           };
 
         vector<string> integrals = {
-            "Box Integral B00",    // B00
             "Box Integral BIN0",   // BIN0
             "Box Integral BIN1",   // BIN1
             "Box Integral BIN2",   // BIN2
