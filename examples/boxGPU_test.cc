@@ -131,8 +131,8 @@ void BO(
     }
     
     for (size_t i = 0; i < res_d.extent(1); i++) {
-        printf("%.15f",res_h(batch_size - 1,i).real()); std::cout << ", ";
-        printf("%.15f",res_h(batch_size - 1,i).imag()); std::cout << endl;
+      printf("%.15f",res_h(batch_size - 1,i).real()); std::cout << ", ";
+      printf("%.15f",res_h(batch_size - 1,i).imag()); std::cout << endl;
     }
     std::cout << endl;
 
@@ -140,141 +140,170 @@ void BO(
 
 }
 
+double r(double min, double max) {
+  return min+std::rand()*1.0/RAND_MAX * (max - min);
+}
+
+double rs(double min, double max) {
+  double r1 = min+std::rand()*1.0/RAND_MAX * (max - min);
+  double rs = std::rand()*1.0/RAND_MAX;
+  if (rs < 0.5)
+    return -r1;
+  else
+    return r1;
+}
+
 
 int main(int argc, char* argv[]) {
-    Kokkos::initialize(argc, argv);
-    {
+  Kokkos::initialize(argc, argv);
+  {
 
-        /*
-        _________________________________________________________
-        This is experimental for usage on GPUs 
-        */
+    // Call the integral
+    double low = 10;
+    double up  = 1000;
+		
+    int batch_size = 1;
+    double mu2 = 91.2;
+    int n_tests = 20;
+	
+    // Trigger BIN0 - BIN4
+    for (int n_masses(0); n_masses<5; n_masses++) {
+      std::cout << "Target integral BIN" << n_masses << std::endl;
+      for (size_t i(0); i<n_tests; ++i) {
 
-        /**
-        * Box
-        */
-        double batch_size_d = std::strtod(argv[1], nullptr);
-        int batch_size = static_cast<int>(batch_size_d);
-        int mode = std::atoi(argv[2]);
-        if (batch_size <= 0) {
-            std::cerr << "Batch size must be a positive integer." << std::endl;
-            return 1;
-        }
-        if (!(mode == 0 || mode == 1)) {
-            std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
-            return 1;
-        }
-
-        if (mode == 1) {
-            batch_size = 1; // for correctness test, we only need one batch
-        } else {
-            std::cout << "Box Integral Performance Benchmark with batch size: " << batch_size << std::endl;
-        }
-
-        // Initialize params
-        std::vector<double> mu2s = {
-            1.0, 
-            1.0,
-            1.0, 
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            // 1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          };
-        
-        std::vector<std::vector<double>> ms = {
-            {0.0, 0.0, 0.0, 0.0},  // B0m - BIN0
-            {1.0, 0.0, 0.0, 0.0},  // B1m - BIN1
-            {1.0, 1.0, 0.0, 0.0},  // B2m - BIN2
-            {0.0, 1.0, 1.0, 1.0},  // B3m - BIN3
-            {1.0, 1.0, 1.0, 1.0},  // B4m - BIN4
-            {0.0, 0.0, 0.0, 0.0},  // B0m - B1
-            {0.0, 0.0, 0.0, 0.0},  // B0m - B2
-            {0.0, 0.0, 0.0, 0.0},  // B0m - B3
-            {0.0, 0.0, 0.0, 0.0},  // B0m - B4
-            {0.0, 0.0, 0.0, 0.0},  // B0m - B5
-            {1.0, 0.0, 0.0, 0.0},  // B1m - B6
-            {1.0, 0.0, 0.0, 0.0},  // B1m - B7 
-            {1.0, 0.0, 0.0, 0.0},  // B1m - B8
-            {0.0, 0.0, 1.0, 0.0},  // B1m - B9
-            {0.0, 1.0, 0.0, 0.0},  // B1m - B10 
-            // {0.0, 1.0, 0.0, 1.0},  // B2m - B11
-            {1.0, 1.0, 0.0, 0.0},  // B2m - B12
-            {1.0, 1.0, 0.0, 0.0},  // B2m - B13
-            {0.0, 1.0, 0.0, 1.0},  // B2m - B14
-            {0.0, 2.0, 0.0, 3.0},  // B2m - B15
-            {0.0, 1.0, 1.0, 1.0},  // B3m - B16
-          };
-        
-        std::vector<std::vector<double>> ps = {
-            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B0m - BIN0
-            {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B1m - BIN1
-            {1.0, 1.0, 1.0, 1.0, 2.0, 2.0},  // B2m - BIN2
-            {2.0, 3.0, 4.0, 5.0, 6.0, 7.0},  // B3m - BIN3
-            {3.0, 4.0, 5.0, 6.0, 7.0, 8.0},  // B4m - BIN4
-            {0.0, 0.0, 0.0, 0.0, 3.0, 1.0},  // B0m - B1
-            {1.0, 0.0, 0.0, 0.0, 3.0, 1.0},  // B0m - B2
-            {0.0, 1.0, 0.0, 2.0, 3.0, 1.0},  // B0m - B3
-            {1.0, 2.0, 0.0, 0.0, 3.0, 4.0},  // B0m - B4
-            {1.0, 2.0, 3.0, 0.0, 4.0, 5.0},  // B0m - B5
-            {1.0, 0.0, 0.0, 1.0, 2.0, 3.0},  // B1m - B6
-            {1.0, 0.0, 0.0, 0.0, 2.0, 3.0},  // B1m - B7
-            {0.0, 0.0, 0.0, 0.0, 2.0, 2.0},  // B1m - B8
-            {1.0, 1.0, 1.0, 0.0, 2.0, 2.0},  // B1m - B9
-            {0.0, 0.0, 1.0, 0.0, 2.0, 0.0},  // B1m - B10
-            // {0.0, 0.0, 0.0, 1.0, 2.0, 1.0},  // B2m - B11
-            {0.0, 0.0, 0.0, 1.0, 2.0, 0.0},  // B2m - B12
-            {2.0, 0.0, 0.0, 0.0, 2.0, 0.0},  // B2m - B13
-            {1.0, 1.0, 1.0, 1.0, 1.0, 1.0},  // B2m - B14
-            {1.0, 2.0, 3.0, 4.0, 5.0, 6.0},  // B2m - B15
-            {1.0, 0.0, 0.0, 1.0, 0.0, 0.0},  // B3m - B16
-          };
-
-        vector<string> integrals = {
-            "Box Integral BIN0",   // BIN0
-            "Box Integral BIN1",   // BIN1
-            "Box Integral BIN2",   // BIN2
-            "Box Integral BIN3",   // BIN3
-            "Box Integral BIN4",   // BIN4
-            "Box Integral B1",     // B1
-            "Box Integral B2",     // B2
-            "Box Integral B3",     // B3
-            "Box Integral B4",     // B4
-            "Box Integral B5",     // B5
-            "Box Integral B6",     // B6
-            "Box Integral B7",     // B7
-            "Box Integral B8",     // B8
-            "Box Integral B9",     // B9
-            "Box Integral B10",    // B10
-            // "Box Integral B11",    // B11
-            "Box Integral B12",    // B12
-            "Box Integral B13",    // B13
-            "Box Integral B14",    // B14
-            "Box Integral B15",    // B15
-            "Box Integral B16",    // B16
-        };
-
-        // Call the integral
-        for (size_t i = 0; i < mu2s.size(); i++){
-            if (mode == 0) {std::cout << integrals[i] << std::endl;}
-            BO<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
-        } 
-
+	// should probably make this select randomly from {10., 50., 100., 200};
+	std::vector<double> ms_expl {0.,0.,0.,0.};
+	for(int j(0); j<n_masses; ++j) {
+	  ms_expl[j] = 10;
+	}
+	std::vector<double> ps_expl {rs(low,up),rs(low,up),rs(low,up),rs(low,up),
+				     r(low,up),r(low,up)};
+	BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+      }
     }
-    Kokkos::finalize();
-    return 0;
+	
+    // Zero mass integrals
+    std::cout << "Target integral B1"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,0.};
+      std::vector<double> ps_expl {0.,0.,0.,0.,r(low,up),r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B2"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,0.};
+      std::vector<double> ps_expl {0.,0.,0.,rs(low,up),r(low,up),r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B3"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,0.};
+      std::vector<double> ps_expl {0.,rs(low,up),0.,rs(low,up),r(low,up),r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B4"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,0.};
+      std::vector<double> ps_expl {0.,0.,rs(low,up),rs(low,up),r(low,up),r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B5"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,0.};
+      std::vector<double> ps_expl {0.,rs(low,up),rs(low,up),rs(low,up),r(low,up),r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    // single mass integrals
+    double m2 = 10;
+    std::cout << "Target integral B6"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,m2};
+      std::vector<double> ps_expl {0., 0., m2, m2, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B7"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,m2};
+      std::vector<double> ps_expl {0., 0., m2, rs(low,up), r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B8"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,m2};
+      std::vector<double> ps_expl {0., 0., rs(low,up), rs(low,up), r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B9"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,m2};
+      std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m2, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B10"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,0.,m2};
+      std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    // two mass integrals
+    double m22 = 4.9*4.9;
+    double m32 = 10;
+    double m42 = 50.*50.;
+    std::cout << "Target integral B11"  << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,m32,m42};
+      std::vector<double> ps_expl {0., m32, rs(low,up), m42, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+	
+    std::cout << "Target integral B12" << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,m32,m42};
+      std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+	
+    std::cout << "Target integral B13" << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,0.,m32,m42};
+      std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B14" << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,m22,0.,m42};
+      std::vector<double> ps_expl {m22, m22, m42, m42, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    std::cout << "Target integral B15" << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,m22,0.,m42};
+      std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+
+    // three mass integrals
+    std::cout << "Target integral B16" << std::endl;
+    for (size_t i(0); i<n_tests; ++i) {
+      std::vector<double> ms_expl {0.,m22,m32,m42};
+      std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
+      BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+    }
+	
+	
+  }
+  Kokkos::finalize();
+  return 0;
 }
