@@ -215,41 +215,108 @@ int main(int argc, char* argv[]) {
     {
 
         // Parse command line arguments
-        int n_tests = 100; // default value
-        if (argc > 1) {
-            try {
-                n_tests = std::stoi(argv[1]);
-                if (n_tests <= 0) {
-                    std::cout << "Error: n_tests must be a positive integer. Using default value of 100." << std::endl;
-                    n_tests = 100;
-                }
-            } catch (const std::exception& e) {
-                std::cout << "Error: Invalid argument for n_tests. Using default value of 100." << std::endl;
-                n_tests = 100;
-            }
-        }
+        int n_tests = 1000000; // default value
+        int batch_size = 1000000; // default value
         
-        if (argc > 2) {
-            std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
-            std::cout << "  n_tests: Number of test iterations (default: 100)" << std::endl;
-        }
+        #if MODE == 0
+            // Performance benchmark mode: n_tests=1, batch_size from command line
+            n_tests = 1;
+            if (argc > 1) {
+                try {
+                    batch_size = std::stoi(argv[1]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [batch_size]" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations for performance benchmark (default: 1000000)" << std::endl;
+                std::cout << "  MODE=0: Performance benchmark mode" << std::endl;
+            }
+        #elif MODE == 1
+            // Accuracy test mode: batch_size=1, n_tests from command line
+            batch_size = 1;
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations for accuracy testing (default: 1000000)" << std::endl;
+                std::cout << "  MODE=1: Accuracy test mode" << std::endl;
+            }
+        #else
+            // Fallback mode: both from command line
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                try {
+                    batch_size = std::stoi(argv[2]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 3) {
+                std::cout << "Usage: " << argv[0] << " [n_tests] [batch_size]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations (default: 1000000)" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+                std::cout << "  MODE not set: Both parameters configurable" << std::endl;
+            }
+        #endif
 
-        // std::cout << "Running with n_tests = " << n_tests << std::endl;
+        std::cout << "Running with n_tests = " << n_tests << std::endl;
+        std::cout << "Running with batch_size = " << batch_size << std::endl;
 
-        // Print CSV header
+        #if MODE == 1
+        // Print CSV header for accuracy test mode
         std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
+        #endif
 
         // Call the integral
         double low = 100;
         double up  = 1000000;
 		
-        int batch_size = 1;
+        
         double mu2 = 91.2*91.2;
 	
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
             for (size_t i(0); i<n_tests; ++i) {
-
+                #if MODE == 0
+                std::cout << "BIN" << n_masses << " " ;
+                #endif
                 // should probably make this select randomly from {10., 50., 100., 200};
                 std::vector<double> ms_expl {0.,0.,0.,0.};
                 for(int j(0); j<n_masses; ++j) {
@@ -257,8 +324,9 @@ int main(int argc, char* argv[]) {
                 }
                 std::vector<double> ps_expl {rs(low,up),rs(low,up),rs(low,up),rs(low,up),
                           r(low,up),r(low,up)};
-                auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+                auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
                 
+                #if MODE == 1
                 // Output CSV row
                 std::cout << "BIN" << n_masses << "," 
                           << (i+1) << "," 
@@ -268,15 +336,21 @@ int main(int argc, char* argv[]) {
                           << complexToCSV(results[0]) << "," 
                           << complexToCSV(results[1]) << "," 
                           << complexToCSV(results[2]) << std::endl;
+                #endif
+
             }
         }
 	
         // Zero mass integrals
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B1 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,0.};
             std::vector<double> ps_expl {0.,0.,0.,0.,r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B1," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -285,13 +359,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B2 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,0.};
             std::vector<double> ps_expl {0.,0.,0.,rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B2," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -300,13 +379,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B3 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,0.};
             std::vector<double> ps_expl {0.,rs(low,up),0.,rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B3," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -315,13 +399,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B4 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,0.};
             std::vector<double> ps_expl {0.,0.,rs(low,up),rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B4," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -330,13 +419,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B5 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,0.};
             std::vector<double> ps_expl {0.,rs(low,up),rs(low,up),rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B5," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -345,15 +439,20 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         // single mass integrals
         double m2 = 10;
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B6 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,m2};
             std::vector<double> ps_expl {0., 0., m2, m2, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B6," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -362,13 +461,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B7 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,m2};
             std::vector<double> ps_expl {0., 0., m2, rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B7," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -377,13 +481,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B8 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,m2};
             std::vector<double> ps_expl {0., 0., rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B8," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -392,13 +501,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B9 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,m2};
             std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m2, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B9," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -407,13 +521,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B10 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,0.,m2};
             std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B10," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -422,6 +541,7 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         // two mass integrals
@@ -429,10 +549,14 @@ int main(int argc, char* argv[]) {
         double m32 = 10;
         double m42 = 50.*50.;
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B11 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,m32,m42};
             std::vector<double> ps_expl {0., m32, rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B11," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -441,13 +565,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 	
 		for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B12 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,m32,m42};
             std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B12," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -456,13 +585,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 	
 		for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B13 ";
+            #endif
             std::vector<double> ms_expl {0.,0.,m32,m42};
             std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B13," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -471,13 +605,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B14 ";
+            #endif
             std::vector<double> ms_expl {0.,m22,0.,m42};
             std::vector<double> ps_expl {m22, m22, m42, m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B14," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -486,13 +625,18 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B15 ";
+            #endif
             std::vector<double> ms_expl {0.,m22,0.,m42};
             std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B15," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -501,14 +645,19 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
 
         // three mass integrals
         for (size_t i(0); i<n_tests; ++i) {
+            #if MODE == 0
+                std::cout << "B16 ";
+            #endif
             std::vector<double> ms_expl {0.,m22,m32,m42};
             std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, 1, 1);
+            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
             
+            #if MODE == 1
             std::cout << "B16," 
                       << (i+1) << "," 
                       << mu2 << "," 
@@ -517,6 +666,7 @@ int main(int argc, char* argv[]) {
                       << complexToCSV(results[0]) << "," 
                       << complexToCSV(results[1]) << "," 
                       << complexToCSV(results[2]) << std::endl;
+            #endif
         }
         
         
