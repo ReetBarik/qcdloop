@@ -80,17 +80,17 @@ find_package(Kokkos REQUIRED)
 # Set compile definitions to pass mode to preprocessor
 add_compile_definitions(MODE=${MODE})
 
-# add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
-# target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
-# target_compile_options(tadpoleGPU_test PRIVATE -w)
+add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
+target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(tadpoleGPU_test PRIVATE -w)
 
-# add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
-# target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
-# target_compile_options(bubbleGPU_test PRIVATE -w)
+add_executable(bubbleGPU_test examples/bubbleGPU_test.cc)
+target_link_libraries(bubbleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(bubbleGPU_test PRIVATE -w)
 
-# add_executable(triangleGPU_test examples/triangleGPU_test.cc)
-# target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
-# target_compile_options(triangleGPU_test PRIVATE -w)
+add_executable(triangleGPU_test examples/triangleGPU_test.cc)
+target_link_libraries(triangleGPU_test PUBLIC Kokkos::kokkos)
+target_compile_options(triangleGPU_test PRIVATE -w)
 
 add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)

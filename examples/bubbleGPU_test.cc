@@ -31,7 +31,7 @@ using complex = Kokkos::complex<double>;
 * \param p are the four-momentum squared of the external lines
 */
 template<typename TOutput, typename TMass, typename TScale>
-void BB(
+std::vector<TOutput> BB(
     const TScale& mu2,
     vector<TMass> const& m,
     vector<TScale> const& p,
@@ -39,7 +39,7 @@ void BB(
     int mode) {
 
     ql::Timer tt;
-    Kokkos::View<complex* [3]> res_d("res", batch_size);
+    Kokkos::View<TOutput* [3]> res_d("res", batch_size);
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
 
@@ -124,16 +124,16 @@ void BB(
     
     if (mode == 0) { // performance benchmark
         tt.printTime(tt.stop());
-        return;
+        return std::vector<TOutput>();
     }
     
+    // Return the results as a vector
+    std::vector<TOutput> results;
     for (size_t i = 0; i < res_d.extent(1); i++) {
-        printf("%.15f",res_h(batch_size - 1,i).real()); cout << ", ";
-        printf("%.15f",res_h(batch_size - 1,i).imag()); cout << endl;
+        results.push_back(res_h(batch_size - 1, i));
     }
-    std::cout << endl;
-    
-    return;
+
+    return results;
 }
 
 
@@ -141,78 +141,95 @@ int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
         
-        /*
-        _________________________________________________________
-        This is experimental for usage on GPUs 
-        */
+        // Parse command line arguments
+        int n_tests = 1000000; // default value
+        int batch_size = 1000000; // default value
+        
+        #if MODE == 0
+            // Performance benchmark mode: n_tests=1, batch_size from command line
+            n_tests = 1;
+            if (argc > 1) {
+                try {
+                    batch_size = std::stoi(argv[1]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [batch_size]" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations for performance benchmark (default: 1000000)" << std::endl;
+                std::cout << "  MODE=0: Performance benchmark mode" << std::endl;
+            }
+        #elif MODE == 1
+            // Accuracy test mode: batch_size=1, n_tests from command line
+            batch_size = 1;
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations for accuracy testing (default: 1000000)" << std::endl;
+                std::cout << "  MODE=1: Accuracy test mode" << std::endl;
+            }
+        #else
+            // Fallback mode: both from command line
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                try {
+                    batch_size = std::stoi(argv[2]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 3) {
+                std::cout << "Usage: " << argv[0] << " [n_tests] [batch_size]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations (default: 1000000)" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+                std::cout << "  MODE not set: Both parameters configurable" << std::endl;
+            }
+        #endif
 
-        /**
-        * Bubble
-        */
-        double batch_size_d = std::strtod(argv[1], nullptr);
-        int batch_size = static_cast<int>(batch_size_d);
-        int mode = std::atoi(argv[2]);
-        if (batch_size <= 0) {
-            std::cerr << "Batch size must be a positive integer." << std::endl;
-            return 1;
-        }
-        if (!(mode == 0 || mode == 1)) {
-            std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
-            return 1;
-        }
+        std::cout << "Running with n_tests = " << n_tests << std::endl;
+        std::cout << "Running with batch_size = " << batch_size << std::endl;
 
-        if (mode == 1) {
-            batch_size = 1; // for correctness test, we only need one batch
-        } else {
-            std::cout << "Bubble Integral Performance Benchmark with batch size: " << batch_size << std::endl;
-        }
-
-        // Initialize params
-        vector<double> mu2s = {
-            std::pow(1.0,2.0),
-            std::pow(1.7,2.0),
-            std::pow(1.0,2.0),
-            std::pow(1.7,2.0),
-            std::pow(1.7,2.0),
-            std::pow(1.7,2.0),
-            std::pow(1.7,2.0)
-        };
-
-        vector<vector<double>> ms = {
-            {0.0, 0.0},                        // BB0-1
-            {1.0, 0.0},                        // BB1
-            {0.0, 1.0},                        // BB2
-            {0.0, 0.0},                        // BB3
-            {5.0, 2.0},                        // BB0
-            {0.0, 5.0},                        // BB4
-            {5.0, 3.0}                         // BB5
-        };
-
-        vector<vector<double>> ps = {
-            {0.0},                        // BB0-1
-            {1.0},                        // BB1
-            {0.0},                        // BB2
-            {1.0},                        // BB3
-            {1.0},                        // BB0
-            {1.0},                        // BB4
-            {0.0}                         // BB5
-        };
-
-        vector<string> integrals = {
-            "Bubble Integral BB0-1", // BB0-1
-            "Bubble Integral BB1",   // BB1
-            "Bubble Integral BB2",   // BB2
-            "Bubble Integral BB3",   // BB3
-            "Bubble Integral BB0",   // BB0
-            "Bubble Integral BB4",   // BB4
-            "Bubble Integral BB5"    // BB5
-        };
-
-        // Call the integral
-        for (size_t i = 0; i < mu2s.size(); i++){
-            if (mode == 0) {std::cout << integrals[i] << std::endl;}
-            BB<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
-        }  
+        #if MODE == 1
+        // Print CSV header for accuracy test mode
+        std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
+        #endif
     }
   
     Kokkos::finalize();

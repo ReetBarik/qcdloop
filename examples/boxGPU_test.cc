@@ -91,7 +91,7 @@ std::string complexToCSV(const complex& c) {
 * \param p are the four-momentum squared of the external lines
 */
 template<typename TOutput, typename TMass, typename TScale>
-std::vector<complex> BO(
+std::vector<TOutput> BO(
     const TScale& mu2,
     vector<TMass> const& m,
     vector<TScale> const& p,
@@ -99,7 +99,7 @@ std::vector<complex> BO(
     int mode) {
 
     ql::Timer tt;
-    Kokkos::View<complex* [3]> res_d("res", batch_size);
+    Kokkos::View<TOutput* [3]> res_d("res", batch_size);
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
     
@@ -183,11 +183,11 @@ std::vector<complex> BO(
 
     if (mode == 0) { // performance benchmark
         tt.printTime(tt.stop());
-        return std::vector<complex>();
+        return std::vector<TOutput>();
     }
     
     // Return the results as a vector
-    std::vector<complex> results;
+    std::vector<TOutput> results;
     for (size_t i = 0; i < res_d.extent(1); i++) {
         results.push_back(res_h(batch_size - 1, i));
     }
