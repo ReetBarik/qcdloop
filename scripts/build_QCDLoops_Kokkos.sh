@@ -1,11 +1,11 @@
-##############################################################
-# Usage: bash scripts/build_QCDLoops_Kokkos.sh <install-dir> #
-#   Ensure you have your environment setup with proper       #
-#   compilers and drivers for your target architecture.      #
-##############################################################
-# Disclaimer: this is meant to give an example of how to     #
-#   inject Kokkos in QCDLoops, but it is not failproof.      #
-##############################################################
+########################################################################
+# Usage: source scripts/build_QCDLoops_Kokkos.sh <install-dir> <mode>  #
+#        Ensure you have your environment setup with proper            #
+#        compilers and drivers for your target architecture.           #
+########################################################################
+#        Disclaimer: this is meant to give an example of how to        #
+#        inject Kokkos in QCDLoops, but it is not failproof.           #
+########################################################################
 
 
 
@@ -159,7 +159,7 @@ cd "$TARGET_DIR" || exit 1
 export LD_LIBRARY_PATH=$1/build/:$LD_LIBRARY_PATH
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
+cmake -DMODE=$2 -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
 make VERBOSE=1
 # make
 cd ..
