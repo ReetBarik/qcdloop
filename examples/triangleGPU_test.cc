@@ -34,7 +34,7 @@ using complex = Kokkos::complex<double>;
 * \param p are the four-momentum squared of the external lines
 */
 template<typename TOutput, typename TMass, typename TScale>
-void TR(
+std::vector<TOutput> TR(
     const TScale& mu2,
     vector<TMass> const& m,
     vector<TScale> const& p,
@@ -42,7 +42,7 @@ void TR(
     int mode) {
 
     ql::Timer tt;
-    Kokkos::View<complex* [3]> res_d("res", batch_size);
+    Kokkos::View<TOutput* [3]> res_d("res", batch_size);
     auto res_h = Kokkos::create_mirror_view(res_d);
     Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
     
@@ -184,16 +184,16 @@ void TR(
 
     if (mode == 0) { // performance benchmark
         tt.printTime(tt.stop());
-        return;
+        return std::vector<TOutput>();
     }
     
+    // Return the results as a vector
+    std::vector<TOutput> results;
     for (size_t i = 0; i < res_d.extent(1); i++) {
-        printf("%.15f",res_h(batch_size - 1,i).real()); std::cout << ", ";
-        printf("%.15f",res_h(batch_size - 1,i).imag()); std::cout << endl;
+        results.push_back(res_h(batch_size - 1, i));
     }
-    std::cout << endl;
 
-    return;
+    return results;
 
 }
 
@@ -204,98 +204,96 @@ int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
 
-        /*
-        _________________________________________________________
-        This is experimental for usage on GPUs 
-        */
-
-        /**
-        * Triangle
-        */
-        double batch_size_d = std::strtod(argv[1], nullptr);
-        int batch_size = static_cast<int>(batch_size_d);
-        int mode = std::atoi(argv[2]);
-        if (batch_size <= 0) {
-            std::cerr << "Batch size must be a positive integer." << std::endl;
-            return 1;
-        }
-        if (!(mode == 0 || mode == 1)) {
-            std::cerr << "Mode must be either 0 for performance benachmark or 1 for correctness test." << std::endl;
-            return 1;
-        }
-
-        if (mode == 1) {
-            batch_size = 1; // for correctness test, we only need one batch
-        } else {
-            std::cout << "Triangle Integral Performance Benchmark with batch size: " << batch_size << std::endl;
-        }
-
-        // Initialize params
-        std::vector<double> mu2s = {
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0, 
-            1.0,
-            1.0
-            // 1.0
-        };
+        // Parse command line arguments
+        int n_tests = 1000000; // default value
+        int batch_size = 1000000; // default value
         
-        std::vector<std::vector<double>> ms = {
-            {5.0, 2.0, 3.0},                        // T0-1
-            {5.0, 2.0, 0.0},                        // T0-2
-            {5.0, 0.0, 0.0},                        // T0-3
-            {0.0, 0.0, 0.0},                        // T0-4
-            {0.0, 0.0, 0.0},                        // T1
-            {0.0, 0.0, 0.0},                        // T2
-            {0.75, 0.0, 0.0},                       // T3
-            {0.0, 1.0, 0.0},                        // T4-1
-            {0.0, 0.0, 8.5},                        // T4-2
-            {1.1, 0.0, 0.0},                        // T5
-            {1.0, 1.0, 0.0}                         // T6
-            // {0.0, 1.0, 0.0}                      // T0-3 denspence: argument on cut
-        };
+        #if MODE == 0
+            // Performance benchmark mode: n_tests=1, batch_size from command line
+            n_tests = 1;
+            if (argc > 1) {
+                try {
+                    batch_size = std::stoi(argv[1]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [batch_size]" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations for performance benchmark (default: 1000000)" << std::endl;
+                std::cout << "  MODE=0: Performance benchmark mode" << std::endl;
+            }
+        #elif MODE == 1
+            // Accuracy test mode: batch_size=1, n_tests from command line
+            batch_size = 1;
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations for accuracy testing (default: 1000000)" << std::endl;
+                std::cout << "  MODE=1: Accuracy test mode" << std::endl;
+            }
+        #else
+            // Fallback mode: both from command line
+            if (argc > 1) {
+                try {
+                    n_tests = std::stoi(argv[1]);
+                    if (n_tests <= 0) {
+                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
+                        n_tests = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
+                    n_tests = 1000000;
+                }
+            }
+            
+            if (argc > 2) {
+                try {
+                    batch_size = std::stoi(argv[2]);
+                    if (batch_size <= 0) {
+                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
+                        batch_size = 1000000;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                    batch_size = 1000000;
+                }
+            }
+            
+            if (argc > 3) {
+                std::cout << "Usage: " << argv[0] << " [n_tests] [batch_size]" << std::endl;
+                std::cout << "  n_tests: Number of test iterations (default: 1000000)" << std::endl;
+                std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+                std::cout << "  MODE not set: Both parameters configurable" << std::endl;
+            }
+        #endif
+
+        std::cout << "Running with n_tests = " << n_tests << std::endl;
+        std::cout << "Running with batch_size = " << batch_size << std::endl;
+
+        #if MODE == 1
+        // Print CSV header for accuracy test mode
+        std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
+        #endif
         
-        std::vector<std::vector<double>> ps = {
-            {1.0, 2.0, 4.0},                         // T0-1
-            {7.0, 4.0, 10.0},                        // T0-2
-            {1.0, 4.0, 4.0},                         // T0-3
-            {4.0, 6.0, 3.0},                         // T0-4
-            {0.0, 0.5, 0.0},                         // T1
-            {0.5, 0.5, 0.0},                         // T2
-            {0.0, 0.0, 1.5},                         // T3
-            {0.0, 1.0, 0.0},                         // T4-1
-            {0.0, 8.5, 0.0},                         // T4-2
-            {1.1, 0.0, 1.1},                         // T5
-            {1.0, 1.0, 1.0}                          // T6
-            // {1.0, 1.0, 1.0}                       // T0-3 denspence: argument on cut
-        };
-
-        vector<string> integrals = {
-            "Triangle Integral T0-1",   // T0-1
-            "Triangle Integral T0-2",   // T0-2
-            "Triangle Integral T0-3",   // T0-3
-            "Triangle Integral T0-4",   // T0-4
-            "Triangle Integral T1",     // T1
-            "Triangle Integral T2",     // T2
-            "Triangle Integral T3",     // T3
-            "Triangle Integral T4-1",   // T4-1
-            "Triangle Integral T4-2",   // T4-2
-            "Triangle Integral T5",     // T5
-            "Triangle Integral T6"      // T6
-            // "Triangle Integral T0-3" // T0-3 denspence: argument on cut
-        };
-
-        // Call the integral
-        for (size_t i = 0; i < mu2s.size(); i++){
-            if (mode == 0) {std::cout << integrals[i] << std::endl;}
-            TR<complex,double,double>(mu2s[i], ms[i], ps[i], batch_size, mode);
-        } 
 
     }
     Kokkos::finalize();
