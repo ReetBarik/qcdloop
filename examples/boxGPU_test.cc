@@ -217,6 +217,7 @@ int main(int argc, char* argv[]) {
         // Parse command line arguments
         int n_tests = 1000000; // default value
         int batch_size = 1000000; // default value
+        const unsigned int seed = 12345; // hardcoded seed for reproducible results
         
         #if MODE == 0
             // Performance benchmark mode: n_tests=1, batch_size from command line
@@ -296,8 +297,12 @@ int main(int argc, char* argv[]) {
             }
         #endif
 
+        // Initialize random seed for reproducible results
+        std::srand(seed);
+        
         std::cout << "Running with n_tests = " << n_tests << std::endl;
         std::cout << "Running with batch_size = " << batch_size << std::endl;
+        std::cout << "Running with random seed = " << seed << std::endl;
 
         #if MODE == 1
         // Print CSV header for accuracy test mode
@@ -305,11 +310,11 @@ int main(int argc, char* argv[]) {
         #endif
 
         // Call the integral
-        double low = 100;
-        double up  = 1000000;
+        double low = 10;
+        double up  = 1000;
 		
         
-        double mu2 = 91.2*91.2;
+        double mu2 = 91.2;
 	
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
