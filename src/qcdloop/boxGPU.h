@@ -393,7 +393,7 @@ namespace ql
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, r12, ir12) -
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(1.0) / r12, -ir12) +
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(k23 / k13), -ql::Real(k13)) -
-            TOutput{0.0, 2.0 * ql::Constants::_pi()} *
+            TOutput{TMass(0.0), TMass(2.0) * TMass(ql::Constants::_pi())} *
                 ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, TOutput(1.0) / r24, -ir24, l4)
         ) / (TOutput(m3 * m_2) * discr);
     }

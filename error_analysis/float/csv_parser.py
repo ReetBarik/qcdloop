@@ -88,17 +88,25 @@ class QCDLoopCSVParser:
         return [float(x.strip()) for x in content.split(',')]
     
     def hex_to_double(self, hex_str: str) -> float:
-        """Convert hex string to double precision float"""
+        """Convert hex string to float (auto-detects single vs double precision)"""
         # Remove 0x prefix and convert to int
         hex_value = int(hex_str, 16)
         
-        # Convert to double precision float
+        # Convert to float
         if hex_value == 0:
             return 0.0
         
-        # Pack as 8-byte unsigned long long and unpack as double
-        packed = struct.pack('Q', hex_value)
-        return struct.unpack('d', packed)[0]
+        # Check if this is a 32-bit (8 hex digits) or 64-bit (16 hex digits) value
+        hex_digits = hex_str.replace('0x', '').replace('0X', '')
+        
+        if len(hex_digits) <= 8:  # 32-bit single precision
+            # Pack as 4-byte unsigned int and unpack as float
+            packed = struct.pack('I', hex_value)
+            return struct.unpack('f', packed)[0]
+        else:  # 64-bit double precision
+            # Pack as 8-byte unsigned long long and unpack as double
+            packed = struct.pack('Q', hex_value)
+            return struct.unpack('d', packed)[0]
     
     def parse_hex_complex(self, complex_str: str) -> complex:
         """Parse complex number from hex format: (0x...,0x...)"""

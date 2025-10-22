@@ -282,7 +282,7 @@ namespace ql
 #endif
 
         if (az1 < ql::Constants::_eps15())
-            return TOutput{ql::Constants::_pi2o6<TOutput, TMass, TScale>(), 0.0};
+            return TOutput{TMass(ql::Constants::_pi2o6<TOutput, TMass, TScale>()), TMass(0.0)};
 
    
         else if (ql::Real(z) < 0.5)
