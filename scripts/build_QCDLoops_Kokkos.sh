@@ -74,6 +74,8 @@ KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
 # KOKKOS_ENABLED=Kokkos_ENABLE_HIP
 # D) Enable OpenMP
 # KOKKOS_ENABLED=Kokkos_ENABLE_OPENMP
+# E) Enable threads
+# KOKKOS_ENABLED=Kokkos_ENABLE_THREADS
 # more available on Kokkos website
 
 # Enable Architecture (choose one):
@@ -91,6 +93,10 @@ KOKKOS_ARCH_FLAG=NONE
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA908
 # G) Intel Skylake
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_SKX
+# H) Mac
+# KOKKOS_ARCH_FLAG=DKokkos_ARCH_ARMV80
+# I) Intel PVC
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
 # more available on Kokkos website
 
 # Some need extra flags needed for some software frameworks
@@ -168,5 +174,5 @@ cd ..
 ######################
 ## only for AMD GPU ##
 ######################
-# module unload gcc/12.1.0
-# module load gcc/13.3.0
+module unload gcc/12.2.0
+module load gcc/13.3.0
