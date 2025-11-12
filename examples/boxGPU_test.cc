@@ -300,9 +300,9 @@ int main(int argc, char* argv[]) {
         // Initialize random seed for reproducible results
         std::srand(seed);
         
-        std::cout << "Running with n_tests = " << n_tests << std::endl;
-        std::cout << "Running with batch_size = " << batch_size << std::endl;
-        std::cout << "Running with random seed = " << seed << std::endl;
+        // std::cout << "Running with n_tests = " << n_tests << std::endl;
+        // std::cout << "Running with batch_size = " << batch_size << std::endl;
+        // std::cout << "Running with random seed = " << seed << std::endl;
 
         #if MODE == 1
         // Print CSV header for accuracy test mode
