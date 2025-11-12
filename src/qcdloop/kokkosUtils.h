@@ -717,9 +717,9 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput cLi2omx3(TOutput const& z1, TOutput const& z2, TOutput const& z3, TScale const& ieps1, TScale const& ieps2, TScale const& ieps3) {
         const TOutput arg = z1 * z2 * z3;
 
-        TScale ieps;
+        TScale ieps = TScale(0.0);
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(arg)))
-        ieps = ql::Sign(ql::Real(z2 * z3) * ieps1 + ql::Real(z1 * z3) * ieps2 + ql::Real(z1 * z2) * ieps3);
+            ieps = ql::Sign(ql::Real(z2 * z3) * ieps1 + ql::Real(z1 * z3) * ieps2 + ql::Real(z1 * z2) * ieps3);
 
         TOutput res = TOutput(0.0);
         if (Kokkos::abs(arg) <= 1.0) {

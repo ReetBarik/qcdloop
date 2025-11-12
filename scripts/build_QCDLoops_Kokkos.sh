@@ -61,7 +61,7 @@ if which mpicxx > /dev/null 2>&1; then
 fi
 
 # KOKKOS Related settings
-KOKKOS_TAG=4.5.00
+KOKKOS_TAG=4.7.01
 KOKKOS_BUILD=Release
 KOKKOS_URL=https://github.com/kokkos/kokkos.git
 
@@ -96,9 +96,10 @@ KOKKOS_ARCH_FLAG=NONE
 # Some need extra flags needed for some software frameworks
 NO_EXTRA_FLAGS=
 CUDA_EXTRA_FLAGS="-DKokkos_ENABLE_CUDA_LAMBDA=On \
-                  -DKokkos_ENABLE_CUDA_CONSTEXPR=On"
+                  -DKokkos_ENABLE_CUDA_CONSTEXPR=On \
+                  -DKokkos_ENABLE_CUDA_FASTMATH=Off"
 HIP_EXTRA_FLAGS="-DCMAKE_CXX_COMPILER=$CXX \
-                 -DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/soft/compilers/gcc/12.2.0/x86_64-suse-linux\""
+                 -DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/soft/compilers/gcc/13.3.0/x86_64-suse-linux\""
 # Set this to HIP_EXTRA_FLAGS or CUDA_EXTRA_FLAGS 
 #   or NO_EXTRA_FLAGS depending on your build
 EXTRA_FLAGS=$NO_EXTRA_FLAGS
@@ -163,10 +164,3 @@ cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -
 make VERBOSE=1
 # make
 cd ..
-
-
-######################
-## only for AMD GPU ##
-######################
-# module unload gcc/12.1.0
-# module load gcc/13.3.0
