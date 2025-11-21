@@ -125,7 +125,7 @@ def generate_all_data():
     
     print("=== Generating All Precision Analysis Data ===")
     print("Baseline: /home/rbarik/qcdloop/error_analysis/float/raw/box_cpu_fp128.csv (quad precision)")
-    print("Comparing precision levels: CPU FP64, CPU FP32, Simulated FP32, A100 FP64, A100 FP32, MI250 FP64, MI250 FP32\n")
+    print("Comparing precision levels: CPU FP64, CPU FP32, A100 FP64, A100 FP32, MI250 FP64, MI250 FP32, PVC FP64, PVC FP32\n")
     
     # Create output directory
     data_dir = 'precision_analysis_data'
@@ -133,8 +133,8 @@ def generate_all_data():
     print(f"Created data directory: {data_dir}\n")
     
     # Define precision levels
-    precision_levels = ['53bit_cpu', '24bit_cpu', '24bit_simulated', 
-                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
+    precision_levels = ['53bit_cpu', '24bit_cpu', 
+                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250', '53bit_pvc', '24bit_pvc']
     
     # CSV files in raw directory
     raw_data_dir = '/home/rbarik/qcdloop/error_analysis/float/raw'
@@ -145,7 +145,8 @@ def generate_all_data():
         '24bit_mi250': os.path.join(raw_data_dir, 'box_mi250_fp32.csv'),
         '53bit_a100': os.path.join(raw_data_dir, 'box_a100_fp64.csv'),
         '53bit_mi250': os.path.join(raw_data_dir, 'box_mi250_fp64.csv'),
-        '24bit_simulated': os.path.join(raw_data_dir, 'box_simulated_fp32.csv')
+        '53bit_pvc': os.path.join(raw_data_dir, 'box_pvc_fp64.csv'),
+        '24bit_pvc': os.path.join(raw_data_dir, 'box_pvc_fp32.csv')
     }
     
     # Parse baseline file
@@ -357,11 +358,11 @@ def create_individual_plots(data, data_type, plot_config):
     print(f"Created output directory: {output_dir}\n")
     
     precision_levels = ['53bit_cpu', '24bit_cpu', 
-                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
+                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250', '53bit_pvc', '24bit_pvc']
     # precision_levels = ['53bit_cpu', '24bit_cpu', '24bit_simulated', 
     #                    '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
     precision_labels = ['FP64\nCPU', 'FP32\nCPU', 
-                       'FP64\nA100', 'FP32\nA100', 'FP64\nMI250', 'FP32\nMI250']
+                       'FP64\nA100', 'FP32\nA100', 'FP64\nMI250', 'FP32\nMI250', 'FP64\nPVC', 'FP32\nPVC']
     # precision_labels = ['FP64\nCPU', 'FP32\nCPU', 'FP32\nSimulated', 
     #                    'FP64\nA100', 'FP32\nA100', 'FP64\nMI250', 'FP32\nMI250']
     
@@ -448,11 +449,11 @@ def create_summary_plot(data, data_type, plot_config):
     
     all_integrals = sorted(data.keys())
     precision_levels = ['53bit_cpu', '24bit_cpu', 
-                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
+                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250', '53bit_pvc', '24bit_pvc']
     # precision_levels = ['53bit_cpu', '24bit_cpu', '24bit_simulated', 
     #                    '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
     precision_labels = ['FP64 CPU', 'FP32 CPU', 
-                       'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250']
+                       'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250', 'FP64 PVC', 'FP32 PVC']
     # precision_labels = ['FP64 CPU', 'FP32 CPU', 'FP32 Simulated', 
     #                    'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250']
     
@@ -487,8 +488,8 @@ def create_summary_plot(data, data_type, plot_config):
     
     y_limits = (y_min, y_max)
     
-    # Create summary plot with 6x6 grid
-    fig, axes = plt.subplots(6, 6, figsize=(30, 24))
+    # Create summary plot with 8x6 grid
+    fig, axes = plt.subplots(8, 6, figsize=(30, 32))
     
     for prec_idx, precision in enumerate(precision_levels):
         for coeff_idx, coeff_name in enumerate(['Coeff1', 'Coeff2', 'Coeff3']):
@@ -527,7 +528,7 @@ def create_summary_plot(data, data_type, plot_config):
                 ax_real.grid(True, alpha=0.3)
                 ax_real.tick_params(axis='x', rotation=45)
                 
-                if prec_idx == 5:
+                if prec_idx == 7:
                     ax_real.set_xlabel('Target Integral', fontsize=10)
                 if col_real == 0:
                     ax_real.set_ylabel(plot_config['y_label'], fontsize=10)
@@ -565,7 +566,7 @@ def create_summary_plot(data, data_type, plot_config):
                 ax_imag.grid(True, alpha=0.3)
                 ax_imag.tick_params(axis='x', rotation=45)
                 
-                if prec_idx == 5:
+                if prec_idx == 7:
                     ax_imag.set_xlabel('Target Integral', fontsize=10)
             else:
                 ax_imag.text(0.5, 0.5, 'No data', transform=ax_imag.transAxes, ha='center', va='center')
@@ -588,11 +589,11 @@ def create_summary_subset_plot(data, data_type, plot_config):
     
     all_integrals = sorted(data.keys())
     precision_levels = ['53bit_cpu', '24bit_cpu', 
-                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
+                       '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250', '53bit_pvc', '24bit_pvc']
     # precision_levels = ['53bit_cpu', '24bit_cpu', '24bit_simulated', 
     #                    '53bit_a100', '24bit_a100', '53bit_mi250', '24bit_mi250']
     precision_names = ['FP64 CPU', 'FP32 CPU', 
-                       'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250']
+                       'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250', 'FP64 PVC', 'FP32 PVC']
     # precision_names = ['FP64 CPU', 'FP32 CPU', 'FP32 Simulated', 
     #                    'FP64 A100', 'FP32 A100', 'FP64 MI250', 'FP32 MI250']
     
@@ -626,14 +627,14 @@ def create_summary_subset_plot(data, data_type, plot_config):
     
     y_limits = (y_min, y_max)
     
-    # Create summary plot with 2x3 grid (FP64 row, FP32 row)
-    fig, axes = plt.subplots(2, 3, figsize=(18, 8))
+    # Create summary plot with 2x4 grid (FP64 row, FP32 row)
+    fig, axes = plt.subplots(2, 4, figsize=(24, 8))
     
     # Define precision levels for each row
-    fp64_precisions = ['53bit_cpu', '53bit_a100', '53bit_mi250']
-    fp32_precisions = ['24bit_cpu', '24bit_a100', '24bit_mi250']
-    fp64_labels = ['FP64 CPU', 'FP64 A100', 'FP64 MI250']
-    fp32_labels = ['FP32 CPU', 'FP32 A100', 'FP32 MI250']
+    fp64_precisions = ['53bit_cpu', '53bit_a100', '53bit_mi250', '53bit_pvc']
+    fp32_precisions = ['24bit_cpu', '24bit_a100', '24bit_mi250', '24bit_pvc']
+    fp64_labels = ['FP64 CPU', 'FP64 A100', 'FP64 MI250', 'FP64 PVC']
+    fp32_labels = ['FP32 CPU', 'FP32 A100', 'FP32 MI250', 'FP32 PVC']
     
     # First row: FP64 plots
     for col_idx, precision in enumerate(fp64_precisions):

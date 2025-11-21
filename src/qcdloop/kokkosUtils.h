@@ -276,28 +276,25 @@ namespace ql
         const TOutput z1 = TOutput(1.0) - z;
         const TScale az1 = Kokkos::abs(z1);
 
-        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>())
+        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) {
 #if MODE == 0
             Kokkos::printf("denspence: argument on cut\n");
 #endif
-
-        if (az1 < ql::Constants::_eps15())
-            return TOutput{TMass(ql::Constants::_pi2o6<TOutput, TMass, TScale>()), TMass(0.0)};
-
-   
-        else if (ql::Real(z) < 0.5)
-        {
-            if (Kokkos::abs(z) < 1.0)
-                return ql::li2series<TOutput, TMass, TScale>(z, isig);
-            else
-                return -ql::Constants::_pi2o6<TOutput, TMass, TScale>() - 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(1.0 / z, -isig);
         }
-        else
-        {
-            if (az1 < 1.0)
+        if (az1 < ql::Constants::_eps15()) {
+            return TOutput{TMass(ql::Constants::_pi2o6<TOutput, TMass, TScale>()), TMass(0.0)};
+        } else if (ql::Real(z) < 0.5) {
+            if (Kokkos::abs(z) < 1.0) {
+                return ql::li2series<TOutput, TMass, TScale>(z, isig);
+            } else {
+                return -ql::Constants::_pi2o6<TOutput, TMass, TScale>() - 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(1.0 / z, -isig);
+            }
+        } else {
+            if (az1 < 1.0) {
                 return ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) - ql::li2series<TOutput, TMass, TScale>(z1, -isig);
-            else
+            } else {
                 return TOutput(2.0) * ql::Constants::_pi2o6<TOutput, TMass, TScale>() + 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z1, -isig),2) - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) + ql::li2series<TOutput, TMass, TScale>(1.0 / z1, isig);
+            }
         }
     }
 
