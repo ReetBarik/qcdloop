@@ -40,7 +40,9 @@ namespace ql
 
         conv.d = x;
 
+#if MODE == 0
         Kokkos::printf("0x%016" PRIx64, conv.u);
+#endif
     }
 
     /*!
@@ -234,7 +236,9 @@ namespace ql
             if (n == res) return res;
             else res = n;
         }
+#if MODE == 0
         Kokkos::printf("li2series: bad convergence\n");
+#endif
         return TOutput(0.0);
     }
 
@@ -256,7 +260,9 @@ namespace ql
             if (n == res) return res;
             else res = n;
         }
+#if MODE == 0
         Kokkos::printf("ltli2series: bad convergence\n");
+#endif
         return TOutput(0.0);
     }
 
@@ -270,26 +276,25 @@ namespace ql
         const TOutput z1 = TOutput(1.0) - z;
         const TScale az1 = Kokkos::abs(z1);
 
-        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>())
+        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) {
+#if MODE == 0
             Kokkos::printf("denspence: argument on cut\n");
-
-        if (az1 < ql::Constants::_eps15())
-            return TOutput{ql::Constants::_pi2o6<TOutput, TMass, TScale>(), 0.0};
-
-   
-        else if (ql::Real(z) < 0.5)
-        {
-            if (Kokkos::abs(z) < 1.0)
-                return ql::li2series<TOutput, TMass, TScale>(z, isig);
-            else
-                return -ql::Constants::_pi2o6<TOutput, TMass, TScale>() - 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(1.0 / z, -isig);
+#endif
         }
-        else
-        {
-            if (az1 < 1.0)
+        if (az1 < ql::Constants::_eps15()) {
+            return TOutput{TMass(ql::Constants::_pi2o6<TOutput, TMass, TScale>()), TMass(0.0)};
+        } else if (ql::Real(z) < 0.5) {
+            if (Kokkos::abs(z) < 1.0) {
+                return ql::li2series<TOutput, TMass, TScale>(z, isig);
+            } else {
+                return -ql::Constants::_pi2o6<TOutput, TMass, TScale>() - 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(1.0 / z, -isig);
+            }
+        } else {
+            if (az1 < 1.0) {
                 return ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) - ql::li2series<TOutput, TMass, TScale>(z1, -isig);
-            else
+            } else {
                 return TOutput(2.0) * ql::Constants::_pi2o6<TOutput, TMass, TScale>() + 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z1, -isig),2) - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) + ql::li2series<TOutput, TMass, TScale>(1.0 / z1, isig);
+            }
         }
     }
 
@@ -717,9 +722,9 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput cLi2omx3(TOutput const& z1, TOutput const& z2, TOutput const& z3, TScale const& ieps1, TScale const& ieps2, TScale const& ieps3) {
         const TOutput arg = z1 * z2 * z3;
 
-        TScale ieps;
+        TScale ieps = TScale(0.0);
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(arg)))
-        ieps = ql::Sign(ql::Real(z2 * z3) * ieps1 + ql::Real(z1 * z3) * ieps2 + ql::Real(z1 * z2) * ieps3);
+            ieps = ql::Sign(ql::Real(z2 * z3) * ieps1 + ql::Real(z1 * z3) * ieps2 + ql::Real(z1 * z2) * ieps3);
 
         TOutput res = TOutput(0.0);
         if (Kokkos::abs(arg) <= 1.0) {
@@ -791,7 +796,11 @@ namespace ql
     KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, Kokkos::Array<TOutput, 2>& z) {
         const TMass discr = b * b - TMass(4.0) * a * c;
 
-        if (ql::iszero<TOutput, TMass, TScale>(a)) Kokkos::printf("solveabc -- equation is not quadratic");
+        if (ql::iszero<TOutput, TMass, TScale>(a)) {
+#if MODE == 0
+            Kokkos::printf("solveabc -- equation is not quadratic");
+#endif
+        }
 
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(discr))) {
             
@@ -848,7 +857,11 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
-            if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
+            if (b == TOutput(0.0)) {
+#if MODE == 0
+                Kokkos::printf("solveabcd - no possible solution\n");
+#endif
+            }
             z[0] = - c / b; z[1] = z[0];
         }
         else if (c == TOutput(0.0)) {
@@ -880,7 +893,11 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
-            if (b == TOutput(0.0)) Kokkos::printf("solveabcd - no possible solution\n");
+            if (b == TOutput(0.0)) {
+#if MODE == 0
+                Kokkos::printf("solveabcd - no possible solution\n");
+#endif
+            }
             z[0] = -c / b; z[1] = z[0];
         }
         else if (c == TOutput(0.0)) {
@@ -936,8 +953,11 @@ namespace ql
             ieps = -1.0;
         else if (ql::Real(ta) < 0.0)
             ieps = 1.0;
-        else if (ql::Real(ta) == 0.0)
+        else if (ql::Real(ta) == 0.0) {
+#if MODE == 0
             Kokkos::printf("error in ratreal\n");
+#endif
+        }
     }
     
 
@@ -1171,9 +1191,11 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void kfn(Kokkos::Array<TOutput, 3> &res, TScale& ieps, TMass const& xpi, TMass const& xm, TMass const& xmp) {
         
-        if (xm == TMass(0.0) || xmp == TMass(0.0))
+        if (xm == TMass(0.0) || xmp == TMass(0.0)) {
+#if MODE == 0
             Kokkos::printf("Error in kfn,xm,xmp");
-
+#endif
+        }
         const TOutput xx1 = TOutput(xpi - (xm - xmp) * (xm - xmp));
         const TOutput rat = TOutput(xx1 / (4.0 * xm * xmp));
         if (ql::iszero<TOutput, TMass, TScale>(ql::Real(rat))) {

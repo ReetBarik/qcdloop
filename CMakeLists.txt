@@ -21,6 +21,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(VERSION 2.1.0)
 
+# Mode variable - can be 0 or 1, passed during compilation
+set(MODE "1" CACHE STRING "Build mode (0 for performance benchmark or 1 for accuracy test)")
+set_property(CACHE MODE PROPERTY STRINGS "0" "1")
+message(STATUS "Build mode: ${MODE}")
+
 # Set default CXXFLAGS but allow for environment override
 # c.f. https://cmake.org/cmake/help/v3.31/envvar/CXXFLAGS.html
 if (NOT CMAKE_CXX_FLAGS)
@@ -71,6 +76,9 @@ configure_file(
 include_directories(src/qcdloop src)
 
 find_package(Kokkos REQUIRED)
+
+# Set compile definitions to pass mode to preprocessor
+add_compile_definitions(MODE=${MODE})
 
 add_executable(tadpoleGPU_test examples/tadpoleGPU_test.cc)
 target_link_libraries(tadpoleGPU_test PUBLIC Kokkos::kokkos)

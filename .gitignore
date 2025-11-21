@@ -62,3 +62,72 @@ build_logs/
 include/
 kokkos/
 src/qcdloop.pc
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python virtual environments
+venv/
+env/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Test output and data files
+*.csv
+*.pkl
+*.png
+*.pdf
+*.txt
+!README.txt
+!LICENSE.txt
+!CHANGELOG.txt
+!CONTRIBUTING.txt
+!SECURITY.txt
+!CITATION.txt
+
+# Documentation build output
+doc/html/
+doc/latex/
+
+# Specific Python plotting scripts (untracked)
+error_analysis/plot_cpu_b1_standalone.py
+error_analysis/plot_specific_integrals.py
+
+# Analysis directories to ignore
+gpu_arch/
+precision/

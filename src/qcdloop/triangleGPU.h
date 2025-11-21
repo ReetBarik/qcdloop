@@ -193,7 +193,9 @@ namespace ql
     
         const TOutput a = sm2 / sm3 - k23 + r13 * (k12 - sm2 / sm1);
         if (a == TOutput(0.0)) {
+#if MODE == 0
             Kokkos::printf("Triangle::TINDNS: threshold singularity, return 0\n");
+#endif
             res = TOutput(0.0);
             return;
         }
@@ -277,7 +279,9 @@ namespace ql
     
         const TOutput a = r34 / r24 - r23;
         if (a == TOutput(0.0)) {
+#if MODE == 0
             Kokkos::printf("Triangle::TINDNS2: threshold singularity, return 0\n");
+#endif
             res = TOutput(0.0);
             return;
         }
@@ -357,7 +361,9 @@ namespace ql
     
         const TOutput a = r34 * r24 - r23;
         if (a == TOutput(0.0)) {
+#if MODE == 0
             Kokkos::printf("Triangle::TINDNS1: threshold singularity, return 0\n");
+#endif
             res = TOutput(0.0);
             return;
         }
@@ -536,7 +542,11 @@ namespace ql
                     const TOutput p[2] = {TOutput(xpi[4]), TOutput(xpi[5])};
                     TOutput m[3] = {TOutput(xpi[0]), TOutput(xpi[1]), TOutput(xpi[2])};
 
-                    if (p[0] == p[1]) Kokkos::printf("Triangle::TIN2 threshold singularity\n");
+                    if (p[0] == p[1]) {
+#if MODE == 0
+                        Kokkos::printf("Triangle::TIN2 threshold singularity\n");
+#endif
+                    }
 
                     m[0] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[0])));
                     m[1] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[1])));

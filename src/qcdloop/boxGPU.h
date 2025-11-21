@@ -144,8 +144,11 @@ namespace ql
             Yalt[0][3] = Yalt[3][0] = Y[1][2];
             Yalt[1][2] = Yalt[2][1] = Y[0][3];
             Yalt[1][3] = Yalt[3][1] = Y[0][2];
-        } else
+        } else {
+#if MODE == 0
             Kokkos::printf("Box::Ycalc - massive value not implemented");
+#endif
+        }
     }
 
     /*!
@@ -390,7 +393,7 @@ namespace ql
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, r12, ir12) -
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(1.0) / r12, -ir12) +
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(k23 / k13), -ql::Real(k13)) -
-            TOutput{0.0, 2.0 * ql::Constants::_pi()} *
+            TOutput{TMass(0.0), TMass(2.0) * TMass(ql::Constants::_pi())} *
                 ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, TOutput(1.0) / r24, -ir24, l4)
         ) / (TOutput(m3 * m_2) * discr);
     }
@@ -1508,9 +1511,11 @@ namespace ql
                 res(i,j) *= TOutput(fac);
 
             return;
-        } else if (ql::iszero<TOutput, TMass, TScale>(m4sqbar) && ql::iszero<TOutput, TMass, TScale>(m2sqbar))
+        } else if (ql::iszero<TOutput, TMass, TScale>(m4sqbar) && ql::iszero<TOutput, TMass, TScale>(m2sqbar)) {
+#if MODE == 0
             Kokkos::printf("Box::B15 wrong kinematics, this is really B14.");
-
+#endif
+        }
         TMass yy;
         TScale iepsyy;
         ql::ratreal<TOutput, TMass, TScale>(m2*m4sqbar, m4*m2sqbar, yy, iepsyy);
@@ -1843,7 +1848,9 @@ namespace ql
         if (!ql::iszero<TOutput, TMass, TScale>(Y[0][0]) || 
             !ql::iszero<TOutput, TMass, TScale>(Y[1][1]) || 
             !ql::iszero<TOutput, TMass, TScale>(Y[2][2])) {
+#if MODE == 0
             Kokkos::printf("Box::B1m - Wrong ordering.");
+#endif
         }
 
         const bool zY01 = ql::iszero<TOutput, TMass, TScale>(Y[0][1]);

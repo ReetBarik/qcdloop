@@ -1,11 +1,11 @@
-##############################################################
-# Usage: bash scripts/build_QCDLoops_Kokkos.sh <install-dir> #
-#   Ensure you have your environment setup with proper       #
-#   compilers and drivers for your target architecture.      #
-##############################################################
-# Disclaimer: this is meant to give an example of how to     #
-#   inject Kokkos in QCDLoops, but it is not failproof.      #
-##############################################################
+########################################################################
+# Usage: source scripts/build_QCDLoops_Kokkos.sh <install-dir> <mode>  #
+#        Ensure you have your environment setup with proper            #
+#        compilers and drivers for your target architecture.           #
+########################################################################
+#        Disclaimer: this is meant to give an example of how to        #
+#        inject Kokkos in QCDLoops, but it is not failproof.           #
+########################################################################
 
 
 
@@ -31,11 +31,11 @@ mkdir -p $LOGDIR
 
 # Compiler settings (choose one):
 # A) generic GCC
-# CC=$(which gcc)
-# CXX=$(which g++)
+CC=$(which gcc)
+CXX=$(which g++)
 # B) possible alternative on AMD systems:
-CC=$(which hipcc)
-CXX=$(which hipcc)
+# CC=$(which hipcc)
+# CXX=$(which hipcc)
 # C) possible alternative on Cray systems:
 # CC=$(which cc)
 # CXX=$(which CC)
@@ -61,45 +61,56 @@ if which mpicxx > /dev/null 2>&1; then
 fi
 
 # KOKKOS Related settings
-KOKKOS_TAG=4.5.00
+KOKKOS_TAG=4.7.01
 KOKKOS_BUILD=Release
 KOKKOS_URL=https://github.com/kokkos/kokkos.git
 
 # Enable Sofware Framework (choose one):
-# A) Enable CUDA
+# A) Enable Serial (CPU only)
+KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
+# B) Enable CUDA
 # KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
-# B) Enable HIP
-KOKKOS_ENABLED=Kokkos_ENABLE_HIP
-# C) Enable OpenMP
+# C) Enable HIP
+# KOKKOS_ENABLED=Kokkos_ENABLE_HIP
+# D) Enable OpenMP
 # KOKKOS_ENABLED=Kokkos_ENABLE_OPENMP
+# E) Enable threads
+# KOKKOS_ENABLED=Kokkos_ENABLE_THREADS
 # more available on Kokkos website
 
 # Enable Architecture (choose one):
-# A) NVidia H100
+# A) Serial CPU (no specific architecture needed)
+KOKKOS_ARCH_FLAG=NONE
+# B) NVidia H100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_HOPPER90
-# B) NVidia A100
+# C) NVidia A100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_AMPERE80
-# C) NVidia V100
+# D) NVidia V100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VOLTA70
-# D) AMD MI250
-KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA90A
-# E) AMD MI100
+# E) AMD MI250
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA90A
+# F) AMD MI100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA908
-# F) Intel Skylake
+# G) Intel Skylake
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_SKX
+# H) Mac
+# KOKKOS_ARCH_FLAG=DKokkos_ARCH_ARMV80
+# I) Intel PVC
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
 # more available on Kokkos website
 
 # Some need extra flags needed for some software frameworks
 NO_EXTRA_FLAGS=
 CUDA_EXTRA_FLAGS="-DKokkos_ENABLE_CUDA_LAMBDA=On \
-                  -DKokkos_ENABLE_CUDA_CONSTEXPR=On"
+                  -DKokkos_ENABLE_CUDA_CONSTEXPR=On \
+                  -DKokkos_ENABLE_CUDA_FASTMATH=Off"
 HIP_EXTRA_FLAGS="-DCMAKE_CXX_COMPILER=$CXX \
-                 -DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/soft/compilers/gcc/12.2.0/x86_64-suse-linux\""
+                 -DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/soft/compilers/gcc/13.3.0/x86_64-suse-linux\""
 # Set this to HIP_EXTRA_FLAGS or CUDA_EXTRA_FLAGS 
 #   or NO_EXTRA_FLAGS depending on your build
-# EXTRA_FLAGS=$NO_EXTRA_FLAGS
+EXTRA_FLAGS=$NO_EXTRA_FLAGS
 # EXTRA_FLAGS=$CUDA_EXTRA_FLAGS
-EXTRA_FLAGS=$HIP_EXTRA_FLAGS
+# EXTRA_FLAGS=$HIP_EXTRA_FLAGS
 
 
 
@@ -115,13 +126,23 @@ echo Installing Kokkos ARCH=$KOKKOS_ARCH_FLAG
 
    cd kokkos
    
-   cmake -S . -B build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
-   -DCMAKE_INSTALL_PREFIX=install/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
-   -DCMAKE_BUILD_TYPE=$KOKKOS_BUILD \
-   -DCMAKE_CXX_STANDARD=17 \
-   -D$KOKKOS_ARCH_FLAG=ON \
-   -D$KOKKOS_ENABLED=ON \
-   $EXTRA_FLAGS
+   # Build cmake command based on architecture flag
+   if [ "$KOKKOS_ARCH_FLAG" = "NONE" ]; then
+      cmake -S . -B build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
+      -DCMAKE_INSTALL_PREFIX=install/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
+      -DCMAKE_BUILD_TYPE=$KOKKOS_BUILD \
+      -DCMAKE_CXX_STANDARD=17 \
+      -D$KOKKOS_ENABLED=ON \
+      $EXTRA_FLAGS
+   else
+      cmake -S . -B build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
+      -DCMAKE_INSTALL_PREFIX=install/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
+      -DCMAKE_BUILD_TYPE=$KOKKOS_BUILD \
+      -DCMAKE_CXX_STANDARD=17 \
+      -D$KOKKOS_ARCH_FLAG=ON \
+      -D$KOKKOS_ENABLED=ON \
+      $EXTRA_FLAGS
+   fi
    check_exit_status "kokkos cmake"
    
    make -C build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD -j install
@@ -145,14 +166,7 @@ cd "$TARGET_DIR" || exit 1
 export LD_LIBRARY_PATH=$1/build/:$LD_LIBRARY_PATH
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
+cmake -DMODE=$2 -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
 make VERBOSE=1
 # make
 cd ..
-
-
-######################
-## only for AMD GPU ##
-######################
-module unload gcc/12.1.0
-module load gcc/13.3.0
