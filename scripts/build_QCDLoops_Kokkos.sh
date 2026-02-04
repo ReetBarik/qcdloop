@@ -91,6 +91,10 @@ KOKKOS_ARCH_FLAG=NONE
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_VEGA908
 # G) Intel Skylake
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_SKX
+# H) Mac
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_ARMV80
+# I) Intel PVC
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
 # more available on Kokkos website
 
 # Some need extra flags needed for some software frameworks
