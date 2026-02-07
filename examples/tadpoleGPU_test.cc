@@ -24,60 +24,31 @@ using complex = Kokkos::complex<double>;
 *
 * Implementation of the formulae of Denner and Dittmaier \cite Denner:2005nn.
 *
-* \param mu2 is the squre of the scale mu
-* \param m are the squares of the masses of the internal lines
-* \param p are the four-momentum squared of the external lines
+* \param res output object res[i,0,1,2] the coefficients in the Laurent series
+* \param mu2 is the square of the scale mu (per element)
+* \param m are the squares of the masses of the internal lines [batch][1]
+* \param p are the four-momentum squared of the external lines [batch][0] (empty, kept for API consistency)
+* \param i element index
 */
 template<typename TOutput, typename TMass, typename TScale>
-std::vector<TOutput> TP(
-    const TScale& mu2,
-    vector<TMass> const& m,
-    vector<TScale> const& p,
-    int batch_size,
-    int mode) {
-
-    ql::Timer tt;
-
-    // Initialize views
-    Kokkos::View<TOutput* [3]> res_d("res", batch_size);
-    auto res_h = Kokkos::create_mirror_view(res_d);
-    Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
-
-    if (mode == 0) { // performance benchmark
-        tt.start();
-    }
+KOKKOS_INLINE_FUNCTION
+void TP(
+    const Kokkos::View<TOutput* [3]>& res,      // Output view
+    const Kokkos::View<TScale*>& mu2,          // Scale parameter (per element)
+    const Kokkos::View<TMass* [1]>& m,         // Masses view [batch][1]
+    const Kokkos::View<TScale*>& p,            // Momenta view (empty, size 0, kept for API consistency)
+    const int i) {                              // Element index
     
-    Kokkos::View<double*> p_d("p", 0);
-    Kokkos::View<double*> m_d("m", 1); 
-
-    auto p_h = Kokkos::create_mirror_view(p_d);
-    auto m_h = Kokkos::create_mirror_view(m_d);
-    
-    // Populate views and copy to device
-    const double mu2_d = mu2;
-    m_h(0) = m[0];  
-    Kokkos::deep_copy(m_d, m_h);
-
-    if (mu2_d < 0) Kokkos::printf("TadPole integral mu2 is negative!");
-    
-    Kokkos::parallel_for("Tadpole Integral", policy, KOKKOS_LAMBDA(const int& i){       
-        ql::TP0(res_d, mu2_d, m_d, p_d, i);                                      
-    }); 
-
-    Kokkos::deep_copy(res_h, res_d);
-
-    if (mode == 0) { // performance benchmark
-        tt.printTime(tt.stop());
-        return std::vector<TOutput>();
+    // Inline TP0 logic (TP0 expects View<TMass*> and View<TScale*>, so we inline it here)
+    if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m(i, 0)))) {
+        res(i, 1) = TOutput(m(i, 0));
+        res(i, 0) = res(i, 1) * TOutput(Kokkos::log(mu2(i) / m(i, 0)) + TOutput(1.0));
+        res(i, 2) = TOutput(0.0);
+    } else {
+        res(i, 0) = TOutput(0.0);
+        res(i, 1) = TOutput(0.0);
+        res(i, 2) = TOutput(0.0);
     }
-
-    // Return the results as a vector
-    std::vector<TOutput> results;
-    for (size_t i = 0; i < res_d.extent(1); i++) {
-        results.push_back(res_h(batch_size - 1, i));
-    }
-
-    return results;
 }
 
 
@@ -88,94 +59,87 @@ int main(int argc, char* argv[]) {
   {
       
       // Parse command line arguments
-      int n_tests = 1000000; // default value
+      int mode = 1; // default value
       int batch_size = 1000000; // default value
       
-      #if MODE == 0
-          // Performance benchmark mode: n_tests=1, batch_size from command line
-          n_tests = 1;
-          if (argc > 1) {
-              try {
-                  batch_size = std::stoi(argv[1]);
-                  if (batch_size <= 0) {
-                      std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
-                      batch_size = 1000000;
-                  }
-              } catch (const std::exception& e) {
-                  std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+      if (argc < 2) {
+          std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
+          std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
+          std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+          Kokkos::finalize();
+          return 1;
+      }
+      
+      // Parse mode (required)
+      try {
+          mode = std::stoi(argv[1]);
+          if (mode != 0 && mode != 1) {
+              std::cout << "Error: mode must be 0 or 1. Using default value of 1." << std::endl;
+              mode = 1;
+          }
+      } catch (const std::exception& e) {
+          std::cout << "Error: Invalid argument for mode. Using default value of 1." << std::endl;
+          mode = 1;
+      }
+      
+      // Parse batch_size (optional)
+      if (argc > 2) {
+          try {
+              batch_size = std::stoi(argv[2]);
+              if (batch_size <= 0) {
+                  std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
                   batch_size = 1000000;
               }
+          } catch (const std::exception& e) {
+              std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+              batch_size = 1000000;
           }
-          
-          if (argc > 2) {
-              std::cout << "Usage: " << argv[0] << " [batch_size]" << std::endl;
-              std::cout << "  batch_size: Number of batch iterations for performance benchmark (default: 1000000)" << std::endl;
-              std::cout << "  MODE=0: Performance benchmark mode" << std::endl;
-          }
-      #elif MODE == 1
-          // Accuracy test mode: batch_size=1, n_tests from command line
-          batch_size = 1;
-          if (argc > 1) {
-              try {
-                  n_tests = std::stoi(argv[1]);
-                  if (n_tests <= 0) {
-                      std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
-                      n_tests = 1000000;
-                  }
-              } catch (const std::exception& e) {
-                  std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
-                  n_tests = 1000000;
-              }
-          }
-          
-          if (argc > 2) {
-              std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
-              std::cout << "  n_tests: Number of test iterations for accuracy testing (default: 1000000)" << std::endl;
-              std::cout << "  MODE=1: Accuracy test mode" << std::endl;
-          }
-      #else
-          // Fallback mode: both from command line
-          if (argc > 1) {
-              try {
-                  n_tests = std::stoi(argv[1]);
-                  if (n_tests <= 0) {
-                      std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
-                      n_tests = 1000000;
-                  }
-              } catch (const std::exception& e) {
-                  std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
-                  n_tests = 1000000;
-              }
-          }
-          
-          if (argc > 2) {
-              try {
-                  batch_size = std::stoi(argv[2]);
-                  if (batch_size <= 0) {
-                      std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
-                      batch_size = 1000000;
-                  }
-              } catch (const std::exception& e) {
-                  std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
-                  batch_size = 1000000;
-              }
-          }
-          
-          if (argc > 3) {
-              std::cout << "Usage: " << argv[0] << " [n_tests] [batch_size]" << std::endl;
-              std::cout << "  n_tests: Number of test iterations (default: 1000000)" << std::endl;
-              std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
-              std::cout << "  MODE not set: Both parameters configurable" << std::endl;
-          }
-      #endif
+      }
+      
+      if (argc > 3) {
+          std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
+          std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
+          std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+      }
 
-      std::cout << "Running with n_tests = " << n_tests << std::endl;
+      std::cout << "Running with mode = " << mode << std::endl;
       std::cout << "Running with batch_size = " << batch_size << std::endl;
 
-      #if MODE == 1
-      // Print CSV header for accuracy test mode
-      std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
-      #endif
+      if (mode == 0) {
+          // Print CSV header for performance benchmark mode
+          std::cout << "Target Integral,Batch size,Time" << std::endl;
+      } else if (mode == 1) {
+          // Print CSV header for accuracy test mode
+          std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
+      }
+      
+      ql::Timer tt;
+      
+      // Create Kokkos Views for batch processing
+      Kokkos::View<double*> mu2_d("mu2", batch_size);
+      Kokkos::View<double* [1]> m_d("m", batch_size);
+      Kokkos::View<double*> p_d("p", 0);  // Empty view for API consistency
+      Kokkos::View<complex* [3]> res_d("res", batch_size);
+      
+      auto mu2_h = Kokkos::create_mirror_view(mu2_d);
+      auto m_h = Kokkos::create_mirror_view(m_d);
+      auto p_h = Kokkos::create_mirror_view(p_d);
+      auto res_h = Kokkos::create_mirror_view(res_d);
+      
+      // Initialize mu2
+      for (size_t i = 0; i < batch_size; ++i) {
+          mu2_h(i) = 91.2*91.2;
+      }
+      
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+      
+      // TODO: Add test calls here
+      // Example pattern:
+      // 1. Fill host mirrors with test data
+      // 2. Copy to device
+      // 3. Launch parallel_for with timing
+      // 4. Copy results back
+      // 5. Process results for output
   }
 
   Kokkos::finalize();

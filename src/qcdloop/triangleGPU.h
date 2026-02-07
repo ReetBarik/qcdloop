@@ -35,11 +35,12 @@ namespace ql
     * \param msq are the squares of the masses of the internal lines
     */
     template<typename TOutput, typename TMass, typename TScale> 
-    void TriSort(TScale (&psq)[3], TMass (&msq)[3]) {    
+    KOKKOS_INLINE_FUNCTION
+    void TriSort(Kokkos::Array<TScale, 3>& psq, Kokkos::Array<TMass, 3>& msq) {    
         const int x1[3] = {2,0,1};
         const int x2[3] = {1,2,0};
-        TScale psqtmp[3];
-        TMass  msqtmp[3];
+        Kokkos::Array<TScale, 3> psqtmp;
+        Kokkos::Array<TMass, 3> msqtmp;
 
         for (int i = 0; i < 3; i++) {
             psqtmp[i] = psq[i];
@@ -109,8 +110,9 @@ namespace ql
     * \param psq parameter to sort in ascending order
     */
     template<typename TOutput, typename TMass, typename TScale>
-    void SnglSort(TScale (&psq)[3]) {
-        TScale absp[3] = { Kokkos::abs(psq[0]), Kokkos::abs(psq[1]), Kokkos::abs(psq[2])};
+    KOKKOS_INLINE_FUNCTION
+    void SnglSort(Kokkos::Array<TScale, 3>& psq) {
+        Kokkos::Array<TScale, 3> absp = { Kokkos::abs(psq[0]), Kokkos::abs(psq[1]), Kokkos::abs(psq[2])};
         if (absp[0] > absp[1]) {
             const TScale ptmp = psq[0], atmp = absp[0];
             psq[0] = psq[1]; absp[0] = absp[1];
@@ -193,9 +195,7 @@ namespace ql
     
         const TOutput a = sm2 / sm3 - k23 + r13 * (k12 - sm2 / sm1);
         if (a == TOutput(0.0)) {
-#if MODE == 0
             Kokkos::printf("Triangle::TINDNS: threshold singularity, return 0\n");
-#endif
             res = TOutput(0.0);
             return;
         }
@@ -279,9 +279,7 @@ namespace ql
     
         const TOutput a = r34 / r24 - r23;
         if (a == TOutput(0.0)) {
-#if MODE == 0
             Kokkos::printf("Triangle::TINDNS2: threshold singularity, return 0\n");
-#endif
             res = TOutput(0.0);
             return;
         }
@@ -361,9 +359,7 @@ namespace ql
     
         const TOutput a = r34 * r24 - r23;
         if (a == TOutput(0.0)) {
-#if MODE == 0
             Kokkos::printf("Triangle::TINDNS1: threshold singularity, return 0\n");
-#endif
             res = TOutput(0.0);
             return;
         }
@@ -543,9 +539,7 @@ namespace ql
                     TOutput m[3] = {TOutput(xpi[0]), TOutput(xpi[1]), TOutput(xpi[2])};
 
                     if (p[0] == p[1]) {
-#if MODE == 0
                         Kokkos::printf("Triangle::TIN2 threshold singularity\n");
-#endif
                     }
 
                     m[0] -= ql::Constants::_ieps2<TOutput, TMass, TScale>() * TOutput(Kokkos::abs(ql::Real(m[0])));

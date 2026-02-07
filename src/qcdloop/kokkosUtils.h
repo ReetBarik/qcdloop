@@ -39,10 +39,7 @@ namespace ql
         } conv;
 
         conv.d = x;
-
-#if MODE == 0
         Kokkos::printf("0x%016" PRIx64, conv.u);
-#endif
     }
 
     /*!
@@ -236,9 +233,7 @@ namespace ql
             if (n == res) return res;
             else res = n;
         }
-#if MODE == 0
         Kokkos::printf("li2series: bad convergence\n");
-#endif
         return TOutput(0.0);
     }
 
@@ -260,9 +255,7 @@ namespace ql
             if (n == res) return res;
             else res = n;
         }
-#if MODE == 0
         Kokkos::printf("ltli2series: bad convergence\n");
-#endif
         return TOutput(0.0);
     }
 
@@ -276,11 +269,10 @@ namespace ql
         const TOutput z1 = TOutput(1.0) - z;
         const TScale az1 = Kokkos::abs(z1);
 
-        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>())
-#if MODE == 0
+        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()){
             Kokkos::printf("denspence: argument on cut\n");
-#endif
-
+        }
+            
         if (az1 < ql::Constants::_eps15())
             return TOutput{ql::Constants::_pi2o6<TOutput, TMass, TScale>(), 0.0};
 
@@ -800,9 +792,7 @@ namespace ql
         const TMass discr = b * b - TMass(4.0) * a * c;
 
         if (ql::iszero<TOutput, TMass, TScale>(a)) {
-#if MODE == 0
             Kokkos::printf("solveabc -- equation is not quadratic");
-#endif
         }
 
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(discr))) {
@@ -861,9 +851,7 @@ namespace ql
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) {
-#if MODE == 0
                 Kokkos::printf("solveabcd - no possible solution\n");
-#endif
             }
             z[0] = - c / b; z[1] = z[0];
         }
@@ -897,9 +885,7 @@ namespace ql
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, Kokkos::Array<TOutput, 2>& z) {
         if (a == TOutput(0.0)) {
             if (b == TOutput(0.0)) {
-#if MODE == 0
                 Kokkos::printf("solveabcd - no possible solution\n");
-#endif
             }
             z[0] = -c / b; z[1] = z[0];
         }
@@ -957,9 +943,7 @@ namespace ql
         else if (ql::Real(ta) < 0.0)
             ieps = 1.0;
         else if (ql::Real(ta) == 0.0) {
-#if MODE == 0
             Kokkos::printf("error in ratreal\n");
-#endif
         }
     }
     
@@ -1195,9 +1179,7 @@ namespace ql
     KOKKOS_INLINE_FUNCTION void kfn(Kokkos::Array<TOutput, 3> &res, TScale& ieps, TMass const& xpi, TMass const& xm, TMass const& xmp) {
         
         if (xm == TMass(0.0) || xmp == TMass(0.0)) {
-#if MODE == 0
             Kokkos::printf("Error in kfn,xm,xmp");
-#endif
         }
         const TOutput xx1 = TOutput(xpi - (xm - xmp) * (xm - xmp));
         const TOutput rat = TOutput(xx1 / (4.0 * xm * xmp));

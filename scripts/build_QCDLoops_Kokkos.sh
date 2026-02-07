@@ -1,12 +1,11 @@
-########################################################################
-# Usage: source scripts/build_QCDLoops_Kokkos.sh <install-dir> <mode>  #
-#        Ensure you have your environment setup with proper            #
-#        compilers and drivers for your target architecture.           #
-########################################################################
-#        Disclaimer: this is meant to give an example of how to        #
-#        inject Kokkos in QCDLoops, but it is not failproof.           #
-########################################################################
-
+################################################################
+# Usage: source scripts/build_QCDLoops_Kokkos.sh <install-dir> #
+#      Ensure you have your environment setup with proper      #
+#      compilers and drivers for your target architecture.     #
+################################################################
+#    Disclaimer: this is meant to give an example of how to    #
+#      inject Kokkos in QCDLoops, but it is not failproof.     #
+################################################################
 
 
 # install in provided path or in current path
@@ -95,6 +94,8 @@ KOKKOS_ARCH_FLAG=NONE
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_ARMV80
 # I) Intel PVC
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
+# J) NVidia GB200 
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_BLACKWELL100
 # more available on Kokkos website
 
 # Some need extra flags needed for some software frameworks
@@ -139,6 +140,7 @@ echo Installing Kokkos ARCH=$KOKKOS_ARCH_FLAG
       -DCMAKE_CXX_STANDARD=17 \
       -D$KOKKOS_ARCH_FLAG=ON \
       -D$KOKKOS_ENABLED=ON \
+      # -DCMAKE_CUDA_ARCHITECTURES=100 \
       $EXTRA_FLAGS
    fi
    check_exit_status "kokkos cmake"
@@ -164,7 +166,7 @@ cd "$TARGET_DIR" || exit 1
 export LD_LIBRARY_PATH=$1/build/:$LD_LIBRARY_PATH
 mkdir build
 cd build
-cmake -DMODE=$2 -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
+cmake -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_CXX_STANDARD=17 -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_FLAGS="-g" ..
 make VERBOSE=1
 # make
 cd ..

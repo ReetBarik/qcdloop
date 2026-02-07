@@ -145,9 +145,7 @@ namespace ql
             Yalt[1][2] = Yalt[2][1] = Y[0][3];
             Yalt[1][3] = Yalt[3][1] = Y[0][2];
         } else {
-#if MODE == 0
             Kokkos::printf("Box::Ycalc - massive value not implemented");
-#endif
         }
     }
 
@@ -1512,9 +1510,7 @@ namespace ql
 
             return;
         } else if (ql::iszero<TOutput, TMass, TScale>(m4sqbar) && ql::iszero<TOutput, TMass, TScale>(m2sqbar)) {
-#if MODE == 0
             Kokkos::printf("Box::B15 wrong kinematics, this is really B14.");
-#endif
         }
         TMass yy;
         TScale iepsyy;
@@ -1848,9 +1844,7 @@ namespace ql
         if (!ql::iszero<TOutput, TMass, TScale>(Y[0][0]) || 
             !ql::iszero<TOutput, TMass, TScale>(Y[1][1]) || 
             !ql::iszero<TOutput, TMass, TScale>(Y[2][2])) {
-#if MODE == 0
             Kokkos::printf("Box::B1m - Wrong ordering.");
-#endif
         }
 
         const bool zY01 = ql::iszero<TOutput, TMass, TScale>(Y[0][1]);

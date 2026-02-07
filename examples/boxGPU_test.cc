@@ -68,6 +68,19 @@ std::string vectorToCSV(const std::vector<T>& vec) {
     return ss.str();
 }
 
+// Helper function to extract array from View for CSV output
+template<typename T>
+std::string arrayToCSV(const T* arr, size_t size) {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < size; ++i) {
+        if (i > 0) ss << ",";
+        ss << arr[i];
+    }
+    ss << "]";
+    return ss.str();
+}
+
 // Helper function to format complex number for CSV output using HEX format
 std::string complexToCSV(const complex& c) {
     std::stringstream ss;
@@ -85,115 +98,86 @@ std::string complexToCSV(const complex& c) {
 * Implementation of the formulae of Denner et al. \cite Denner:1991qq,
 * 't Hooft and Veltman \cite tHooft:1978xw, Bern et al. \cite Bern:1993kr.
 *
-* \param res output object res[0,1,2] the coefficients in the Laurent series
-* \param mu2 is the square of the scale mu
-* \param m are the squares of the masses of the internal lines
-* \param p are the four-momentum squared of the external lines
+* \param res output object res[i,0,1,2] the coefficients in the Laurent series
+* \param mu2 is the square of the scale mu (per element)
+* \param m are the squares of the masses of the internal lines [batch][4]
+* \param p are the four-momentum squared of the external lines [batch][6]
+* \param i element index
 */
 template<typename TOutput, typename TMass, typename TScale>
-std::vector<TOutput> BO(
-    const TScale& mu2,
-    vector<TMass> const& m,
-    vector<TScale> const& p,
-    int batch_size,
-    int mode) {
-
-    ql::Timer tt;
-    Kokkos::View<TOutput* [3]> res_d("res", batch_size);
-    auto res_h = Kokkos::create_mirror_view(res_d);
-    Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0,batch_size); 
+KOKKOS_INLINE_FUNCTION
+void BO(
+    const Kokkos::View<TOutput* [3]>& res,      // Output view
+    const Kokkos::View<TScale*>& mu2,           // Scale parameter (per element)
+    const Kokkos::View<TMass* [4]>& m,          // Masses view [batch][4]
+    const Kokkos::View<TScale* [6]>& p,         // Momenta view [batch][6]
+    const int i) {                              // Element index
     
-    if (mode == 0) { // performance benchmark
-        tt.start();
-    }
-
-    // Normalization
-    const TScale scalefac = ql::Max(Kokkos::abs(p[4]),ql::Max(Kokkos::abs(p[5]),ql::Max(Kokkos::abs(p[0]),ql::Max(Kokkos::abs(p[1]),ql::Max(Kokkos::abs(p[2]),Kokkos::abs(p[3]))))));
-
-    TMass xpi_temp[13];
-    xpi_temp[0] = m[0] / scalefac;
-    xpi_temp[1] = m[1] / scalefac;
-    xpi_temp[2] = m[2] / scalefac;
-    xpi_temp[3] = m[3] / scalefac;
-    xpi_temp[4] = TMass(p[0] / scalefac);
-    xpi_temp[5] = TMass(p[1] / scalefac);
-    xpi_temp[6] = TMass(p[2] / scalefac);
-    xpi_temp[7] = TMass(p[3] / scalefac);
-    xpi_temp[8] = TMass(p[4] / scalefac);
-    xpi_temp[9] = TMass(p[5] / scalefac);
-    xpi_temp[10] = xpi_temp[4] + xpi_temp[5] + xpi_temp[6] + xpi_temp[7] - xpi_temp[8] - xpi_temp[9];
-    xpi_temp[11] =-xpi_temp[4] + xpi_temp[5] - xpi_temp[6] + xpi_temp[7] + xpi_temp[8] + xpi_temp[9];
-    xpi_temp[12] = xpi_temp[4] - xpi_temp[5] + xpi_temp[6] - xpi_temp[7] + xpi_temp[8] + xpi_temp[9];
-
-    const Kokkos::Array<TMass, 13> xpi = {xpi_temp[0], xpi_temp[1], xpi_temp[2], xpi_temp[3],
-                                          xpi_temp[4], xpi_temp[5], xpi_temp[6], xpi_temp[7],
-                                          xpi_temp[8], xpi_temp[9], xpi_temp[10], xpi_temp[11],
-                                          xpi_temp[12]};
-    const TScale musq = mu2 / scalefac;
-
+    // Compute scalefac for this element
+    const TScale scalefac = ql::Max(
+        Kokkos::abs(p(i, 4)),
+        ql::Max(Kokkos::abs(p(i, 5)),
+        ql::Max(Kokkos::abs(p(i, 0)),
+        ql::Max(Kokkos::abs(p(i, 1)),
+        ql::Max(Kokkos::abs(p(i, 2)),
+                 Kokkos::abs(p(i, 3)))))));
+    
+    // Compute xpi array for this element
+    Kokkos::Array<TMass, 13> xpi;
+    xpi[0] = m(i, 0) / scalefac;
+    xpi[1] = m(i, 1) / scalefac;
+    xpi[2] = m(i, 2) / scalefac;
+    xpi[3] = m(i, 3) / scalefac;
+    xpi[4] = TMass(p(i, 0) / scalefac);
+    xpi[5] = TMass(p(i, 1) / scalefac);
+    xpi[6] = TMass(p(i, 2) / scalefac);
+    xpi[7] = TMass(p(i, 3) / scalefac);
+    xpi[8] = TMass(p(i, 4) / scalefac);
+    xpi[9] = TMass(p(i, 5) / scalefac);
+    xpi[10] = xpi[4] + xpi[5] + xpi[6] + xpi[7] - xpi[8] - xpi[9];
+    xpi[11] = -xpi[4] + xpi[5] - xpi[6] + xpi[7] + xpi[8] + xpi[9];
+    xpi[12] = xpi[4] - xpi[5] + xpi[6] - xpi[7] + xpi[8] + xpi[9];
+    
+    // Compute musq for this element
+    const TScale musq = mu2(i) / scalefac;
+    
     // Count number of internal masses
     int massive = 0;
-    for (size_t i = 0; i < 4; i++)
-        if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(xpi[i]))) massive += 1;
-
-    // check cayley elements
-    const TMass y13 = xpi[0] + xpi[2] - xpi[8];
-    const TMass y24 = xpi[1] + xpi[3] - xpi[9];
-    if (ql::iszero<TOutput, TMass, TScale>(y13) || ql::iszero<TOutput, TMass, TScale>(y24)) {
-        std::cout << "Box::integral: Modified Cayley elements y13 or y24=0" << std::endl;
-        
-        Kokkos::parallel_for("Box Integral 00", policy, KOKKOS_LAMBDA(const int& i) {     
-            res_d(i,0) = TOutput(0.0); 
-            res_d(i,1) = TOutput(0.0); 
-            res_d(i,2) = TOutput(0.0);                                                 
-        }); 
-        
-    } else {
-        if (massive == 0) {
-            Kokkos::parallel_for("Box Integral 0m", policy, KOKKOS_LAMBDA(const int& i){        
-                ql::B0m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
-            });
-        } else if (massive == 1) {
-            Kokkos::parallel_for("Box Integral 1m", policy, KOKKOS_LAMBDA(const int& i){        
-                ql::B1m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
-            });
-        } else if (massive == 2) {
-            Kokkos::parallel_for("Box Integral 2m", policy, KOKKOS_LAMBDA(const int& i){        
-                ql::B2m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
-            });
-        } else if (massive == 3) {
-            Kokkos::parallel_for("Box Integral 3m", policy, KOKKOS_LAMBDA(const int& i){        
-                ql::B3m<TOutput, TMass, TScale>(res_d, xpi, musq, i);                                                      
-            });
-        } else if (massive == 4) {
-            Kokkos::parallel_for("Box Integral 4m", policy, KOKKOS_LAMBDA(const int& i){        
-                ql::B4m<TOutput, TMass, TScale>(res_d, xpi, i);                                                      
-            });
-        }      
-
-        Kokkos::parallel_for("Normalize Res", policy, KOKKOS_LAMBDA(const int& i) {
-            res_d(i,0) /= (scalefac * scalefac);
-            res_d(i,1) /= (scalefac * scalefac);
-            res_d(i,2) /= (scalefac * scalefac);
-        });
-    }
-
-
-    Kokkos::deep_copy(res_h, res_d);
-
-    if (mode == 0) { // performance benchmark
-        tt.printTime(tt.stop());
-        return std::vector<TOutput>();
+    for (size_t j = 0; j < 4; j++) {
+        if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(xpi[j]))) 
+            massive += 1;
     }
     
-    // Return the results as a vector
-    std::vector<TOutput> results;
-    for (size_t i = 0; i < res_d.extent(1); i++) {
-        results.push_back(res_h(batch_size - 1, i));
+    // Check Cayley elements
+    const TMass y13 = xpi[0] + xpi[2] - xpi[8];
+    const TMass y24 = xpi[1] + xpi[3] - xpi[9];
+    
+    if (ql::iszero<TOutput, TMass, TScale>(y13) || 
+        ql::iszero<TOutput, TMass, TScale>(y24)) {
+        res(i, 0) = TOutput(0.0);
+        res(i, 1) = TOutput(0.0);
+        res(i, 2) = TOutput(0.0);
+        return;
     }
-
-    return results;
-
+    
+    // Call appropriate B function based on massive count
+    if (massive == 0) {
+        ql::B0m<TOutput, TMass, TScale>(res, xpi, musq, i);
+    } else if (massive == 1) {
+        ql::B1m<TOutput, TMass, TScale>(res, xpi, musq, i);
+    } else if (massive == 2) {
+        ql::B2m<TOutput, TMass, TScale>(res, xpi, musq, i);
+    } else if (massive == 3) {
+        ql::B3m<TOutput, TMass, TScale>(res, xpi, musq, i);
+    } else if (massive == 4) {
+        ql::B4m<TOutput, TMass, TScale>(res, xpi, i);
+    }
+    
+    // Normalize results
+    const TScale scalefac2 = scalefac * scalefac;
+    res(i, 0) /= scalefac2;
+    res(i, 1) /= scalefac2;
+    res(i, 2) /= scalefac2;
 }
 
 double r(double min, double max) {
@@ -215,458 +199,621 @@ int main(int argc, char* argv[]) {
     {
 
         // Parse command line arguments
-        int n_tests = 1000000; // default value
+        int mode = 1; // default value
         int batch_size = 1000000; // default value
         
-        #if MODE == 0
-            // Performance benchmark mode: n_tests=1, batch_size from command line
-            n_tests = 1;
-            if (argc > 1) {
-                try {
-                    batch_size = std::stoi(argv[1]);
-                    if (batch_size <= 0) {
-                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
-                        batch_size = 1000000;
-                    }
-                } catch (const std::exception& e) {
-                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+        if (argc < 2) {
+            std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
+            std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
+            std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+            Kokkos::finalize();
+            return 1;
+        }
+        
+        // Parse mode (required)
+        try {
+            mode = std::stoi(argv[1]);
+            if (mode != 0 && mode != 1) {
+                std::cout << "Error: mode must be 0 or 1. Using default value of 1." << std::endl;
+                mode = 1;
+            }
+        } catch (const std::exception& e) {
+            std::cout << "Error: Invalid argument for mode. Using default value of 1." << std::endl;
+            mode = 1;
+        }
+        
+        // Parse batch_size (optional)
+        if (argc > 2) {
+            try {
+                batch_size = std::stoi(argv[2]);
+                if (batch_size <= 0) {
+                    std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
                     batch_size = 1000000;
                 }
+            } catch (const std::exception& e) {
+                std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
+                batch_size = 1000000;
             }
-            
-            if (argc > 2) {
-                std::cout << "Usage: " << argv[0] << " [batch_size]" << std::endl;
-                std::cout << "  batch_size: Number of batch iterations for performance benchmark (default: 1000000)" << std::endl;
-                std::cout << "  MODE=0: Performance benchmark mode" << std::endl;
-            }
-        #elif MODE == 1
-            // Accuracy test mode: batch_size=1, n_tests from command line
-            batch_size = 1;
-            if (argc > 1) {
-                try {
-                    n_tests = std::stoi(argv[1]);
-                    if (n_tests <= 0) {
-                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
-                        n_tests = 1000000;
-                    }
-                } catch (const std::exception& e) {
-                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
-                    n_tests = 1000000;
-                }
-            }
-            
-            if (argc > 2) {
-                std::cout << "Usage: " << argv[0] << " [n_tests]" << std::endl;
-                std::cout << "  n_tests: Number of test iterations for accuracy testing (default: 1000000)" << std::endl;
-                std::cout << "  MODE=1: Accuracy test mode" << std::endl;
-            }
-        #else
-            // Fallback mode: both from command line
-            if (argc > 1) {
-                try {
-                    n_tests = std::stoi(argv[1]);
-                    if (n_tests <= 0) {
-                        std::cout << "Error: n_tests must be a positive integer. Using default value of 1000000." << std::endl;
-                        n_tests = 1000000;
-                    }
-                } catch (const std::exception& e) {
-                    std::cout << "Error: Invalid argument for n_tests. Using default value of 1000000." << std::endl;
-                    n_tests = 1000000;
-                }
-            }
-            
-            if (argc > 2) {
-                try {
-                    batch_size = std::stoi(argv[2]);
-                    if (batch_size <= 0) {
-                        std::cout << "Error: batch_size must be a positive integer. Using default value of 1000000." << std::endl;
-                        batch_size = 1000000;
-                    }
-                } catch (const std::exception& e) {
-                    std::cout << "Error: Invalid argument for batch_size. Using default value of 1000000." << std::endl;
-                    batch_size = 1000000;
-                }
-            }
-            
-            if (argc > 3) {
-                std::cout << "Usage: " << argv[0] << " [n_tests] [batch_size]" << std::endl;
-                std::cout << "  n_tests: Number of test iterations (default: 1000000)" << std::endl;
-                std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
-                std::cout << "  MODE not set: Both parameters configurable" << std::endl;
-            }
-        #endif
+        }
+        
+        if (argc > 3) {
+            std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
+            std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
+            std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
+        }
 
-        std::cout << "Running with n_tests = " << n_tests << std::endl;
+        std::cout << "Running with mode = " << mode << std::endl;
         std::cout << "Running with batch_size = " << batch_size << std::endl;
 
-        #if MODE == 1
-        // Print CSV header for accuracy test mode
-        std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
-        #endif
+        if (mode == 0) {
+            // Print CSV header for performance benchmark mode
+            std::cout << "Target Integral,Batch size,Time" << std::endl;
+        } else if (mode == 1) {
+            // Print CSV header for accuracy test mode
+            std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
+        }
+        
+        ql::Timer tt;
 
         // Call the integral
         double low = 100;
         double up  = 1000000;
 		
+        // Create Kokkos Views for batch processing
+        Kokkos::View<double*> mu2_d("mu2", batch_size);
+        Kokkos::View<double* [4]> m_d("m", batch_size);
+        Kokkos::View<double* [6]> p_d("p", batch_size);
+        Kokkos::View<complex* [3]> res_d("res", batch_size);
         
-        double mu2 = 91.2*91.2;
+        auto mu2_h = Kokkos::create_mirror_view(mu2_d);
+        auto m_h = Kokkos::create_mirror_view(m_d);
+        auto p_h = Kokkos::create_mirror_view(p_d);
+        auto res_h = Kokkos::create_mirror_view(res_d);
+        
+        // Initialize mu2
+        for (size_t i = 0; i < batch_size; ++i) {
+            mu2_h(i) = 91.2*91.2;
+        }
+        
+        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
 	
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
-            for (size_t i(0); i<n_tests; ++i) {
-                #if MODE == 0
-                std::cout << "BIN" << n_masses << " " ;
-                #endif
+            // Fill host mirrors
+            for (size_t i(0); i<batch_size; ++i) {
                 // should probably make this select randomly from {10., 50., 100., 200};
-                std::vector<double> ms_expl {0.,0.,0.,0.};
-                for(int j(0); j<n_masses; ++j) {
-                    ms_expl[j] = 10;
+                for(int j(0); j<4; ++j) {
+                    m_h(i, j) = 0.;
                 }
-                std::vector<double> ps_expl {rs(low,up),rs(low,up),rs(low,up),rs(low,up),
-                          r(low,up),r(low,up)};
-                auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-                
-                #if MODE == 1
-                // Output CSV row
-                std::cout << "BIN" << n_masses << "," 
-                          << (i+1) << "," 
-                          << mu2 << "," 
-                          << vectorToCSV(ms_expl) << "," 
-                          << vectorToCSV(ps_expl) << "," 
-                          << complexToCSV(results[0]) << "," 
-                          << complexToCSV(results[1]) << "," 
-                          << complexToCSV(results[2]) << std::endl;
-                #endif
-
+                for(int j(0); j<n_masses; ++j) {
+                    m_h(i, j) = 10;
+                }
+                p_h(i, 0) = rs(low,up);
+                p_h(i, 1) = rs(low,up);
+                p_h(i, 2) = rs(low,up);
+                p_h(i, 3) = rs(low,up);
+                p_h(i, 4) = r(low,up);
+                p_h(i, 5) = r(low,up);
+            }
+            
+            // Copy to device
+            Kokkos::deep_copy(mu2_d, mu2_h);
+            Kokkos::deep_copy(m_d, m_h);
+            Kokkos::deep_copy(p_d, p_h);
+            
+            // Launch parallel_for with timing
+            tt.start();
+            Kokkos::parallel_for("Box Integral BIN", policy, KOKKOS_LAMBDA(const int& i) {
+                BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+            });
+            Kokkos::fence(); // Ensure completion before timing
+            double elapsed = tt.stop();
+            
+            // Copy results back
+            Kokkos::deep_copy(res_h, res_d);
+            
+            // Process results
+            if (mode == 0) {
+                std::cout << "BIN" << n_masses << "," << batch_size << "," << elapsed << std::endl;
+            } else if (mode == 1) {
+                for (size_t i = 0; i < batch_size; ++i) {
+                    double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                    double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                    std::cout << "BIN" << n_masses << "," 
+                              << (i+1) << "," 
+                              << mu2_h(i) << "," 
+                              << arrayToCSV(m_arr, 4) << "," 
+                              << arrayToCSV(p_arr, 6) << "," 
+                              << complexToCSV(res_h(i, 0)) << "," 
+                              << complexToCSV(res_h(i, 1)) << "," 
+                              << complexToCSV(res_h(i, 2)) << std::endl;
+                }
             }
         }
 	
-        // Zero mass integrals
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B1 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,0.};
-            std::vector<double> ps_expl {0.,0.,0.,0.,r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B1," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // Zero mass integrals - B1
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.; p_h(i, 2) = 0.; p_h(i, 3) = 0.;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B1", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        double elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B1," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B1," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B2 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,0.};
-            std::vector<double> ps_expl {0.,0.,0.,rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B2," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B2
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.; p_h(i, 2) = 0.;
+            p_h(i, 3) = rs(low,up); p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B2", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B2," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B2," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B3 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,0.};
-            std::vector<double> ps_expl {0.,rs(low,up),0.,rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B3," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B3
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
+            p_h(i, 0) = 0.; p_h(i, 1) = rs(low,up); p_h(i, 2) = 0.;
+            p_h(i, 3) = rs(low,up); p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B3", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B3," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B3," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B4 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,0.};
-            std::vector<double> ps_expl {0.,0.,rs(low,up),rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B4," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B4
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.;
+            p_h(i, 2) = rs(low,up); p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B4", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B4," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B4," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B5 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,0.};
-            std::vector<double> ps_expl {0.,rs(low,up),rs(low,up),rs(low,up),r(low,up),r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B5," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B5
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
+            p_h(i, 0) = 0.;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B5", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B5," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B5," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
         // single mass integrals
         double m2 = 10;
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B6 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,m2};
-            std::vector<double> ps_expl {0., 0., m2, m2, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B6," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        
+        // B6
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.;
+            p_h(i, 2) = m2; p_h(i, 3) = m2;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B6", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B6," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B6," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B7 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,m2};
-            std::vector<double> ps_expl {0., 0., m2, rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B7," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B7
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.;
+            p_h(i, 2) = m2; p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B7", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B7," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B7," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B8 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,m2};
-            std::vector<double> ps_expl {0., 0., rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B8," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B8
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
+            p_h(i, 0) = 0.; p_h(i, 1) = 0.;
+            p_h(i, 2) = rs(low,up); p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B8", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B8," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B8," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B9 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,m2};
-            std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m2, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B9," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B9
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
+            p_h(i, 0) = 0.;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = m2;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B9", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B9," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B9," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B10 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,0.,m2};
-            std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B10," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B10
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
+            p_h(i, 0) = 0.;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B10", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B10," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B10," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
         // two mass integrals
         double m22 = 4.9*4.9;
         double m32 = 10;
         double m42 = 50.*50.;
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B11 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,m32,m42};
-            std::vector<double> ps_expl {0., m32, rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B11," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        
+        // B11
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
+            p_h(i, 0) = 0.; p_h(i, 1) = m32;
+            p_h(i, 2) = rs(low,up); p_h(i, 3) = m42;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B11", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B11," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B11," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 	
-		for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B12 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,m32,m42};
-            std::vector<double> ps_expl {0., rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B12," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B12
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
+            p_h(i, 0) = 0.;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = m42;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B12", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B12," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B12," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 	
-		for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B13 ";
-            #endif
-            std::vector<double> ms_expl {0.,0.,m32,m42};
-            std::vector<double> ps_expl {0., rs(low,up), rs(low,up), rs(low,up), r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B13," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B13
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
+            p_h(i, 0) = 0.;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = rs(low,up);
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B13", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B13," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B13," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B14 ";
-            #endif
-            std::vector<double> ms_expl {0.,m22,0.,m42};
-            std::vector<double> ps_expl {m22, m22, m42, m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B14," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B14
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = 0.; m_h(i, 3) = m42;
+            p_h(i, 0) = m22; p_h(i, 1) = m22;
+            p_h(i, 2) = m42; p_h(i, 3) = m42;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B14", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B14," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B14," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B15 ";
-            #endif
-            std::vector<double> ms_expl {0.,m22,0.,m42};
-            std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B15," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // B15
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = 0.; m_h(i, 3) = m42;
+            p_h(i, 0) = m22;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = m42;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B15", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B15," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B15," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
 
-        // three mass integrals
-        for (size_t i(0); i<n_tests; ++i) {
-            #if MODE == 0
-                std::cout << "B16 ";
-            #endif
-            std::vector<double> ms_expl {0.,m22,m32,m42};
-            std::vector<double> ps_expl {m22, rs(low,up), rs(low,up), m42, r(low,up), r(low,up)};
-            auto results = BO<complex,double,double>(mu2, ms_expl, ps_expl, batch_size, MODE);
-            
-            #if MODE == 1
-            std::cout << "B16," 
-                      << (i+1) << "," 
-                      << mu2 << "," 
-                      << vectorToCSV(ms_expl) << "," 
-                      << vectorToCSV(ps_expl) << "," 
-                      << complexToCSV(results[0]) << "," 
-                      << complexToCSV(results[1]) << "," 
-                      << complexToCSV(results[2]) << std::endl;
-            #endif
+        // three mass integrals - B16
+        for (size_t i(0); i<batch_size; ++i) {
+            m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = m32; m_h(i, 3) = m42;
+            p_h(i, 0) = m22;
+            p_h(i, 1) = rs(low,up); p_h(i, 2) = rs(low,up); p_h(i, 3) = m42;
+            p_h(i, 4) = r(low,up); p_h(i, 5) = r(low,up);
+        }
+        Kokkos::deep_copy(mu2_d, mu2_h);
+        Kokkos::deep_copy(m_d, m_h);
+        Kokkos::deep_copy(p_d, p_h);
+        tt.start();
+        Kokkos::parallel_for("Box Integral B16", policy, KOKKOS_LAMBDA(const int& i) {
+            BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
+        });
+        Kokkos::fence();
+        elapsed = tt.stop();
+        Kokkos::deep_copy(res_h, res_d);
+        if (mode == 0) {
+            std::cout << "B16," << batch_size << "," << elapsed << std::endl;
+        } else if (mode == 1) {
+            for (size_t i = 0; i < batch_size; ++i) {
+                double m_arr[4] = {m_h(i, 0), m_h(i, 1), m_h(i, 2), m_h(i, 3)};
+                double p_arr[6] = {p_h(i, 0), p_h(i, 1), p_h(i, 2), p_h(i, 3), p_h(i, 4), p_h(i, 5)};
+                std::cout << "B16," << (i+1) << "," << mu2_h(i) << "," 
+                          << arrayToCSV(m_arr, 4) << "," << arrayToCSV(p_arr, 6) << "," 
+                          << complexToCSV(res_h(i, 0)) << "," << complexToCSV(res_h(i, 1)) << "," 
+                          << complexToCSV(res_h(i, 2)) << std::endl;
+            }
         }
         
         
