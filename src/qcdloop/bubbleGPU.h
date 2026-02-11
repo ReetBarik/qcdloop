@@ -184,4 +184,74 @@ namespace ql
         res(i,2) = TOutput(0.0);
 
     }
+
+    /*!
+    * The integral is defined as:
+    * \f[
+    * I_{2}^{D=4-2 \epsilon}(p^2; m_1^2, m_2^2)= \mu^{2 \epsilon} \left[ \frac{1}{\epsilon} - \int_{0}^{1} da \ln (-a (1-a) p^2 + am_{2}^2 + (1-a) m_{1}^{2} - i \epsilon ) \right]  + O(\epsilon)
+    *   \f]
+    * Implementation of the formulae of Denner and Dittmaier \cite Denner:2005nn.
+    *
+    * \param res output object res[i,0,1,2] the coefficients in the Laurent series
+    * \param mu2 is the square of the scale mu (per element)
+    * \param m are the squares of the masses of the internal lines [batch][2]
+    * \param p are the four-momentum squared of the external lines [batch][1]
+    * \param i element index
+    */
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    void BB(
+        const Kokkos::View<TOutput* [3]>& res,      // Output view
+        const Kokkos::View<TScale*>& mu2,          // Scale parameter (per element)
+        const Kokkos::View<TMass* [2]>& m,          // Masses view [batch][2]
+        const Kokkos::View<TScale* [1]>& p,         // Momenta view [batch][1]
+        const int i) {                              // Element index
+        
+        // Normalization
+        const TScale scalefac = ql::Max(
+            ql::Max(ql::Max(Kokkos::abs(p(i, 0)), mu2(i)),
+                    Kokkos::abs(m(i, 0))),
+            Kokkos::abs(m(i, 1)));
+        
+        const TMass m0 = (ql::Min(m(i, 0), m(i, 1))) / scalefac;
+        const TMass m1 = (ql::Max(m(i, 0), m(i, 1))) / scalefac;
+        const TScale p0 = p(i, 0) / scalefac;
+        const TScale musq = mu2(i) / scalefac;
+        
+        // Call appropriate BB function based on conditions
+        if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0)) && 
+            ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0)) && 
+            ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1))) {  // All zero result
+            res(i, 0) = TOutput(0.0);
+            res(i, 1) = TOutput(0.0);
+            res(i, 2) = TOutput(0.0);
+        }
+        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq)) && 
+                 ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0 / musq)) && 
+                 ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1 / musq))) {
+            res(i, 0) = TOutput(0.0);
+            res(i, 1) = TOutput(1.0);
+            res(i, 2) = TOutput(0.0);
+        }
+        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0 / musq))) {
+            if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs((m1 - p0) / musq))) {
+                ql::BB1<TOutput, TMass, TScale>(res, musq, m1, i);  // I(s;0,s) s = m1, DD(4.13)
+            }
+            else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq))) {
+                ql::BB2<TOutput, TMass, TScale>(res, musq, m1, i);  // I(0;0,m2)
+            }
+            else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1 / musq))) {
+                ql::BB3<TOutput, TMass, TScale>(res, musq, m1 - TMass(p0), i);  // I(s;0,0)
+            }
+            else {
+                ql::BB4<TOutput, TMass, TScale>(res, musq, m1, p0, i);  // I(s;0,m2)
+            }
+        }
+        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq))) {  // deal with special case, s = 0
+            ql::BB5<TOutput, TMass, TScale>(res, musq, m0, m1, i);
+        }
+        else {
+            ql::BB0<TOutput, TMass, TScale>(res, musq, m0, m1, p0, i);
+        }
+    }
 }

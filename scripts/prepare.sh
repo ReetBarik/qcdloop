@@ -12,4 +12,4 @@ module load cmake/3.28.3
 
 # For Intel
 
-echo "Modules loaded"
+module list
