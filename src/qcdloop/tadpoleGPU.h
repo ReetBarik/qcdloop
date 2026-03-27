@@ -5,12 +5,12 @@
 //          Taylor Childers : jchilders@anl.gov
 
 #pragma once
-#include "kokkosMaths.h"
 
+#include "kokkosUtils.h"
 
 namespace ql
 {
-  using complex = Kokkos::complex<double>;
+  // complex is defined in kokkosMaths.h
   /*!
    * \brief Computes the TadPole integral defined as:
    * \f[
@@ -34,7 +34,7 @@ namespace ql
     const Kokkos::View<TScale*>& p,
     const int i) {
     res(i,1) = TOutput(m);
-    res(i,0) = res(i,1) * TOutput(Kokkos::log(mu2 / m) + TOutput(1.0));
+    res(i,0) = res(i,1) * TOutput(ql::kLog(mu2 / m) + TOutput(1.0));
     res(i,2) = TOutput(0.0);
   }
 
@@ -62,7 +62,7 @@ namespace ql
     const int i) {                              // Element index
     
     // Handle zero-mass case
-    if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m(i, 0)))) {
+    if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m(i, 0)))) {
         res(i, 0) = TOutput(0.0);
         res(i, 1) = TOutput(0.0);
         res(i, 2) = TOutput(0.0);

@@ -6,6 +6,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -188,6 +189,7 @@ int main(int argc, char* argv[]) {
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
             // Fill host mirrors
+            std::srand(12345);
             for (size_t i(0); i<batch_size; ++i) {
                 // should probably make this select randomly from {10., 50., 100., 200};
                 for(int j(0); j<4; ++j) {
@@ -240,6 +242,7 @@ int main(int argc, char* argv[]) {
         }
 	
         // Zero mass integrals - B1
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.; p_h(i, 2) = 0.; p_h(i, 3) = 0.;
@@ -269,6 +272,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B2
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.; p_h(i, 2) = 0.;
@@ -298,6 +302,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B3
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
             p_h(i, 0) = 0.; p_h(i, 1) = rs(low,up); p_h(i, 2) = 0.;
@@ -327,6 +332,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B4
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.;
@@ -357,6 +363,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B5
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = 0.;
             p_h(i, 0) = 0.;
@@ -390,6 +397,7 @@ int main(int argc, char* argv[]) {
         double m2 = 10;
         
         // B6
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.;
@@ -420,6 +428,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B7
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.;
@@ -450,6 +459,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B8
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
             p_h(i, 0) = 0.; p_h(i, 1) = 0.;
@@ -480,6 +490,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B9
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
             p_h(i, 0) = 0.;
@@ -510,6 +521,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B10
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = 0.; m_h(i, 3) = m2;
             p_h(i, 0) = 0.;
@@ -545,6 +557,7 @@ int main(int argc, char* argv[]) {
         double m42 = 50.*50.;
         
         // B11
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
             p_h(i, 0) = 0.; p_h(i, 1) = m32;
@@ -575,6 +588,7 @@ int main(int argc, char* argv[]) {
         }
 	
         // B12
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
             p_h(i, 0) = 0.;
@@ -605,6 +619,7 @@ int main(int argc, char* argv[]) {
         }
 	
         // B13
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = 0.; m_h(i, 2) = m32; m_h(i, 3) = m42;
             p_h(i, 0) = 0.;
@@ -635,6 +650,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B14
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = 0.; m_h(i, 3) = m42;
             p_h(i, 0) = m22; p_h(i, 1) = m22;
@@ -665,6 +681,7 @@ int main(int argc, char* argv[]) {
         }
 
         // B15
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = 0.; m_h(i, 3) = m42;
             p_h(i, 0) = m22;
@@ -695,6 +712,7 @@ int main(int argc, char* argv[]) {
         }
 
         // three mass integrals - B16
+        std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
             m_h(i, 0) = 0.; m_h(i, 1) = m22; m_h(i, 2) = m32; m_h(i, 3) = m42;
             p_h(i, 0) = m22;

@@ -7,11 +7,11 @@
 #pragma once
 #include <math.h>
 #include <inttypes.h>
-#include "kokkosMaths.h"
+#include "kokkosMaths_wrapper.h"
 
 namespace ql
 {
-    using complex = Kokkos::complex<double>;
+    // complex is defined in kokkosMaths.h
 
     void printDoubleBits(double x)
     {
@@ -53,12 +53,12 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput cLn(TOutput const& z, TScale const& isig) {
         TOutput cln;
         
-        if (ql::Imag(z) == 0.0 && ql::Real(z) <= 0.0) {
-            complex temp(0.0, ql::Constants::_pi() * ql::Sign(isig));
-            cln = Kokkos::log(-z) + temp;
+        if (ql::Imag(z) == ql::Constants<TScale>::_zero() && ql::Real(z) <= ql::Constants<TScale>::_zero()) {
+            TOutput temp(ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_pi() * ql::Sign(isig));
+            cln = ql::kLog(-z) + temp;
         }
         else
-            cln = Kokkos::log(z);
+            cln = ql::kLog(z);
         return cln;
     }
 
@@ -72,11 +72,11 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput cLn(TScale const& x, TScale const& isig) {
         TOutput ln;
-        if (x > 0)
-            ln = TOutput(Kokkos::log(x));
+        if (x > ql::Constants<TScale>::_zero())
+            ln = TOutput(ql::kLog(x));
         else {
-            complex temp(0.0, ql::Constants::_pi() * ql::Sign(isig));
-            ln = TOutput(Kokkos::log(-x)) + temp;
+            TOutput temp(ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_pi() * ql::Sign(isig));
+            ln = TOutput(ql::kLog(-x)) + temp;
         }
         return ln;
     }
@@ -95,21 +95,21 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput fndd(int const& n, TOutput const& x, TScale const& iep) {
         const int infty = 16;
-        TOutput res = TOutput(0.0);
+        TOutput res = TOutput(ql::Constants<TScale>::_zero());
         
-        if (Kokkos::abs(x) < 10.0) {
+        if (ql::kAbs(x) < ql::Constants<TScale>::_ten()) {
             
-            if (Kokkos::abs(x - TOutput(1.0)) >= 1e-10) {
-                res = (TOutput(1.0) - ql::kPow<TOutput, TMass, TScale>(x, n + 1)) * (ql::cLn<TOutput, TMass, TScale>(x - TOutput(1.0), iep) - ql::cLn<TOutput, TMass, TScale>(x, iep)); 
+            if (!ql::iszero<TOutput, TMass, TScale>(ql::kAbs(x - TOutput(ql::Constants<TScale>::_one())))) {
+                res = (TOutput(ql::Constants<TScale>::_one()) - ql::kPow<TOutput, TMass, TScale>(x, n + 1)) * (ql::cLn<TOutput, TMass, TScale>(x - TOutput(ql::Constants<TScale>::_one()), iep) - ql::cLn<TOutput, TMass, TScale>(x, iep)); 
             }
             for (int j = 0; j <= n; j++) {
-                res -= ql::kPow<TOutput, TMass, TScale>(x, n - j) / (j + 1.0);
+                res -= ql::kPow<TOutput, TMass, TScale>(x, n - j) / TScale(j + ql::Constants<TScale>::_one());
             }
         } else {
 
-            res = ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - TOutput(1.0) / x, iep); 
+            res = ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - TOutput(ql::Constants<TScale>::_one()) / x, iep); 
             for (int j = n + 1; j <= n + infty; j++)
-                res += ql::kPow<TOutput, TMass, TScale>(x, n - j) / (j + 1.0);
+                res += ql::kPow<TOutput, TMass, TScale>(x, n - j) / TScale(j + ql::Constants<TScale>::_one());
         }
         
         return res;
@@ -129,15 +129,15 @@ namespace ql
         const TOutput r = x / y;
         auto imag_r = (std::is_same<TOutput, double>::value) ? 0 : r.imag();
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(r))) {
-            return TOutput(Kokkos::log(Kokkos::abs(r))) - ql::Constants::_ipio2() * TOutput(ql::Sign(-ql::Real(x)) - ql::Sign(-ql::Real(y)));
+            return TOutput(ql::kLog(ql::kAbs(r))) - ql::Constants<TScale>::template _ipio2<TOutput, TMass, TScale>() * TOutput(ql::Sign(-ql::Real(x)) - ql::Sign(-ql::Real(y)));
         }  
         else
-            return Kokkos::log(r);
+            return ql::kLog(r);
     }
 
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Lnrat(TScale const& x, TScale const& y) {
-        return TOutput(Kokkos::log(Kokkos::abs(x / y))) - (ql::Constants::_ipio2() * TOutput(ql::Sign(-x) - ql::Sign(-y)));
+        return TOutput(ql::kLog(ql::kAbs(x / y))) - (ql::Constants<TScale>::template _ipio2<TOutput, TMass, TScale>() * TOutput(ql::Sign(-x) - ql::Sign(-y)));
     }
 
     /*!
@@ -148,62 +148,62 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TMass ddilog(TMass const& x) {
 
-        if (x == 1.0)
-            return ql::Constants::_pi2o6<TOutput, TMass, TScale>();
-        else if (x == -1.0)
-            return - 0.5 * ql::Constants::_pi2o6<TOutput, TMass, TScale>();
+        if (x == TMass(ql::Constants<TMass>::_one()))
+            return ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>();
+        else if (x == TMass(-ql::Constants<TMass>::_one()))
+            return - TMass(ql::Constants<TMass>::_half()) * ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>();
 
         const TMass T = -x;
         TMass Y, S, A;
 
-        if (ql::Real(T) <= -2.0) {
+        if (ql::Real(T) <= TMass(-ql::Constants<TMass>::_two())) {
 
-            Y = -1.0 / (1.0 + T);
-            S = 1.0;
-            A = TMass(-ql::Constants::_pi2o6<TOutput, TMass, TScale>() + 0.5 * ql::Real(ql::kPow<TOutput, TMass, TScale>(Kokkos::log(-T), 2) - ql::kPow<TOutput, TMass, TScale>(Kokkos::log(1.0 + 1.0 / T), 2)));
+            Y = TMass(-ql::Constants<TMass>::_one()) / (TMass(ql::Constants<TMass>::_one()) + T);
+            S = TMass(ql::Constants<TMass>::_one());
+            A = TMass(-ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() + TMass(ql::Constants<TMass>::_half()) * ql::Real(ql::kPow<TOutput, TMass, TScale>(ql::kLog(-T), 2) - ql::kPow<TOutput, TMass, TScale>(ql::kLog(TMass(ql::Constants<TMass>::_one()) + TMass(ql::Constants<TMass>::_one()) / T), 2)));
 
-        } else if (ql::Real(T) < -1.0) {
+        } else if (ql::Real(T) < TMass(-ql::Constants<TMass>::_one())) {
 
-            Y = -1.0 - T;
-            S = -1.0;
-            A = Kokkos::log(-T);
-            A = TMass(-ql::Constants::_pi2o6<TOutput, TMass, TScale>() + A * (A + Kokkos::log(1.0 + 1.0 / T)));            
+            Y = TMass(-ql::Constants<TMass>::_one()) - T;
+            S = TMass(-ql::Constants<TMass>::_one());
+            A = ql::kLog(-T);
+            A = TMass(-ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() + A * (A + ql::kLog(TMass(ql::Constants<TMass>::_one()) + TMass(ql::Constants<TMass>::_one()) / T)));            
 
-        } else if (ql::Real(T) <= -0.5) {
+        } else if (ql::Real(T) <= TMass(-ql::Constants<TMass>::_half())) {
 
-            Y = (-1.0 - T) / T;
-            S = 1.0;
-            A = Kokkos::log(-T);
-            A = TMass(-ql::Constants::_pi2o6<TOutput, TMass, TScale>() + A * (-0.5 * A + Kokkos::log(1.0 + T)));
+            Y = (TMass(-ql::Constants<TMass>::_one()) - T) / T;
+            S = TMass(ql::Constants<TMass>::_one());
+            A = ql::kLog(-T);
+            A = TMass(-ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() + A * (TMass(-ql::Constants<TMass>::_half()) * A + ql::kLog(TMass(ql::Constants<TMass>::_one()) + T)));
 
-        } else if (ql::Real(T) < 0.0) {
+        } else if (ql::Real(T) < TMass(ql::Constants<TMass>::_zero())) {
 
-            Y = -T / (1.0 + T);
-            S = -1.0;
-            A = TMass(0.5 * ql::Real(ql::kPow<TOutput, TMass, TScale>(Kokkos::log(1.0 + T),2)));
+            Y = -T / (TMass(ql::Constants<TMass>::_one()) + T);
+            S = TMass(-ql::Constants<TMass>::_one());
+            A = TMass(TMass(ql::Constants<TMass>::_half()) * ql::Real(ql::kPow<TOutput, TMass, TScale>(ql::kLog(TMass(ql::Constants<TMass>::_one()) + T),2)));
 
-        } else if (ql::Real(T) <= 1.0) {
+        } else if (ql::Real(T) <= TMass(ql::Constants<TMass>::_one())) {
 
             Y = T;
-            S = 1.0;
-            A = TMass(0.0);
+            S = TMass(ql::Constants<TMass>::_one());
+            A = TMass(ql::Constants<TMass>::_zero());
 
         } else {
 
-            Y = 1.0 / T;
-            S = -1.0;
-            A = TMass(ql::Constants::_pi2o6<TOutput, TMass, TScale>() + 0.5 * ql::Real(ql::kPow<TOutput, TMass, TScale>(Kokkos::log(T),2)));
+            Y = TMass(ql::Constants<TMass>::_one()) / T;
+            S = TMass(-ql::Constants<TMass>::_one());
+            A = TMass(ql::Constants<TMass>::template _pi2o6<TOutput, TMass, TScale>() + TMass(ql::Constants<TMass>::_half()) * ql::Real(ql::kPow<TOutput, TMass, TScale>(ql::kLog(T),2)));
 
         }
         
-        const TMass H = Y + Y - 1.0;
+        const TMass H = Y + Y - TMass(ql::Constants<TMass>::_one());
         const TMass ALFA = H + H;
-        TMass B1 = 0.0, B2 = 0.0, B0 = 0.0;
+        TMass B1 = TMass(ql::Constants<TMass>::_zero()), B2 = TMass(ql::Constants<TMass>::_zero()), B0 = TMass(ql::Constants<TMass>::_zero());
 
         
-        for (int i = 18; i >= 0; --i) {
+        for (int i = ql::Constants<TScale>::_num_C() - 1; i >= 0; --i) {
             
-            B0 = ql::Constants::_C(i) + ALFA * B1 - B2;
+            B0 = ql::Constants<TScale>::_C(i) + ALFA * B1 - B2;
             B2 = B1;
             B1 = B0;
 
@@ -222,19 +222,19 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput li2series(TOutput const& z, TScale const& isig) {
         
-        TOutput xm = -ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - z, -isig);
+        TOutput xm = -ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - z, -isig);
         const TOutput x2 = xm * xm;
-        TOutput res = xm - x2/ TOutput(4.0);
+        TOutput res = xm - x2/ TOutput(ql::Constants<TScale>::_four());
 
-        for (int j = 0; j < 25; j++)
+        for (int j = 0; j < ql::Constants<TScale>::_num_B(); j++)
         {
             xm *= x2;
-            const TOutput n = res + xm *  ql::Constants::_B(j);
+            const TOutput n = res + xm *  ql::Constants<TScale>::_B(j);
             if (n == res) return res;
             else res = n;
         }
         Kokkos::printf("li2series: bad convergence\n");
-        return TOutput(0.0);
+        return TOutput(ql::Constants<TScale>::_zero());
     }
 
 
@@ -247,16 +247,16 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput ltli2series(TOutput const& z1, TScale const& s) {
         TOutput xm = -ql::cLn<TOutput, TMass, TScale>(z1, -s);
         const TOutput x2 = xm * xm;
-        TOutput res = xm - x2 / TOutput(4.0);
+        TOutput res = xm - x2 / TOutput(ql::Constants<TScale>::_four());
 
-        for (int i = 0; i < 25; i++) {
+        for (int i = 0; i < ql::Constants<TScale>::_num_B(); i++) {
             xm *= x2;
-            const TOutput n = res + xm * ql::Constants::_B(i);
+            const TOutput n = res + xm * ql::Constants<TScale>::_B(i);
             if (n == res) return res;
             else res = n;
         }
         Kokkos::printf("ltli2series: bad convergence\n");
-        return TOutput(0.0);
+        return TOutput(ql::Constants<TScale>::_zero());
     }
 
 
@@ -266,30 +266,30 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput denspence(TOutput const& z, TScale const& isig) {
-        const TOutput z1 = TOutput(1.0) - z;
-        const TScale az1 = Kokkos::abs(z1);
+        const TOutput z1 = TOutput(ql::Constants<TScale>::_one()) - z;
+        const TScale az1 = ql::kAbs(z1);
 
-        if (isig == 0.0 && ql::Imag(z) == 0.0 && Kokkos::abs(ql::Real(z1)) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()){
+        if (isig == ql::Constants<TScale>::_zero() && ql::Imag(z) == ql::Constants<TScale>::_zero() && ql::kAbs(ql::Real(z1)) < ql::Constants<TScale>::template _qlonshellcutoff<TOutput, TMass, TScale>()){
             Kokkos::printf("denspence: argument on cut\n");
         }
             
-        if (az1 < ql::Constants::_eps15())
-            return TOutput{ql::Constants::_pi2o6<TOutput, TMass, TScale>(), 0.0};
+        if (az1 < ql::Constants<TScale>::_eps15())
+            return TOutput{ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>(), ql::Constants<TScale>::_zero()};
 
    
-        else if (ql::Real(z) < 0.5)
+        else if (ql::Real(z) < ql::Constants<TScale>::_half())
         {
-            if (Kokkos::abs(z) < 1.0)
+            if (ql::kAbs(z) < ql::Constants<TScale>::_one())
                 return ql::li2series<TOutput, TMass, TScale>(z, isig);
             else
-                return -ql::Constants::_pi2o6<TOutput, TMass, TScale>() - 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(1.0 / z, -isig);
+                return -ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() - TOutput(ql::Constants<TScale>::_half()) * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z, -isig),2) - ql::li2series<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) / z, -isig);
         }
         else
         {
-            if (az1 < 1.0)
-                return ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) - ql::li2series<TOutput, TMass, TScale>(z1, -isig);
+            if (az1 < ql::Constants<TScale>::_one())
+                return ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) - ql::li2series<TOutput, TMass, TScale>(z1, -isig);
             else
-                return TOutput(2.0) * ql::Constants::_pi2o6<TOutput, TMass, TScale>() + 0.5 * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z1, -isig),2) - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) + ql::li2series<TOutput, TMass, TScale>(1.0 / z1, isig);
+                return TOutput(ql::Constants<TScale>::_two()) * ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() + TOutput(ql::Constants<TScale>::_half()) * ql::kPow<TOutput, TMass, TScale>(ql::cLn<TOutput, TMass, TScale>(-z1, -isig),2) - ql::cLn<TOutput, TMass, TScale>(z, isig) * ql::cLn<TOutput, TMass, TScale>(z1, -isig) + ql::li2series<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) / z1, isig);
         }
     }
 
@@ -311,21 +311,21 @@ namespace ql
 
         TMass arg = x1 * x2;
         const TScale ieps = ql::Sign(ql::Real(x2) * ieps1 + ql::Real(x1) * ieps2);
-        if (ql::Real(arg) <= 1.0) {
-            if (ql::Real(arg) == 1.0 || ql::Real(arg) == 0.0)
-                prod = TOutput(0.0);
+        if (ql::Real(arg) <= TMass(ql::Constants<TMass>::_one())) {
+            if (ql::Real(arg) == TMass(ql::Constants<TMass>::_one()) || ql::Real(arg) == TMass(ql::Constants<TMass>::_zero()))
+                prod = TOutput(ql::Constants<TScale>::_zero());
             else {
                 const TOutput lnarg = ql::cLn<TOutput, TMass, TScale>(ql::Real(x1), ieps) + ql::cLn<TOutput, TMass, TScale>(ql::Real(x2), ieps2);
-                const TOutput lnomarg = TOutput(Kokkos::log(1.0 - arg));
+                const TOutput lnomarg = TOutput(ql::kLog(TMass(ql::Constants<TMass>::_one()) - arg));
                 prod = lnarg * lnomarg;
             }
-            Li2omx = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(TOutput(arg), ieps) - prod;
+            Li2omx = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(TOutput(arg), ieps) - prod;
         }
-        else if (ql::Real(arg) > 1.0) {
-            arg = 1.0 / (x1 * x2);
+        else if (ql::Real(arg) > TMass(ql::Constants<TMass>::_one())) {
+            arg = TMass(ql::Constants<TMass>::_one()) / (x1 * x2);
             const TOutput lnarg = - ql::cLn<TOutput, TMass, TScale>(ql::Real(x1), ieps1) - ql::cLn<TOutput, TMass, TScale>(ql::Real(x2), ieps2);
-            const TOutput lnomarg = TOutput(Kokkos::log(1.0 - arg));
-            Li2omx = -TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(TOutput(arg), ieps) + lnarg * lnomarg - TOutput(0.5) * lnarg * lnarg;
+            const TOutput lnomarg = TOutput(ql::kLog(TMass(ql::Constants<TMass>::_one()) - arg));
+            Li2omx = -TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(TOutput(arg), ieps) + lnarg * lnomarg - TOutput(ql::Constants<TScale>::_half()) * lnarg * lnarg;
         }
         
         return Li2omx;
@@ -347,31 +347,45 @@ namespace ql
         const TScale y1 = ql::Imag(zrat1);
         const TScale y2 = ql::Imag(zrat2);
 
-        TOutput res, prod;
+            TOutput res, prod;
         if (ql::iszero<TOutput, TMass, TScale>(y1) && ql::iszero<TOutput, TMass, TScale>(y2))
             res = ql::Li2omx<TOutput, TMass, TScale>(x1, x2, ieps1, ieps2);
         else {
             TOutput arg = zrat1 * zrat2;
-            const TScale ieps = 0.0;
-            if (Kokkos::abs(arg) <= 1.0) {
-                if (arg == 0.0 || arg == 1.0)
-                    prod = TOutput(0.0);
+            const TScale ieps = ql::Constants<TScale>::_zero();
+            if (ql::kAbs(arg) <= ql::Constants<TScale>::_one()) {
+                if (arg == TOutput(ql::Constants<TScale>::_zero()) || arg == TOutput(ql::Constants<TScale>::_one()))
+                    prod = TOutput(ql::Constants<TScale>::_zero());
                 else{
                     const TOutput lnarg = ql::cLn<TOutput, TMass, TScale>(zrat1, ieps1) + ql::cLn<TOutput, TMass, TScale>(zrat2, ieps2);
-                    const TOutput lnomarg = Kokkos::log(TOutput(1.0) - arg);
+                    const TOutput lnomarg = ql::kLog(TOutput(ql::Constants<TScale>::_one()) - arg);
                     prod = lnarg * lnomarg;
                 }
-                res = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
+                res = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
             }
-            else if (Kokkos::abs(arg) > 1.0) {
-                arg = TOutput(1.0) / (zrat1 * zrat2);
+            else if (ql::kAbs(arg) > ql::Constants<TScale>::_one()) {
+                arg = TOutput(ql::Constants<TScale>::_one()) / (zrat1 * zrat2);
                 const TOutput lnarg = -ql::cLn<TOutput, TMass, TScale>(zrat1, ieps1) - ql::cLn<TOutput, TMass, TScale>(zrat2, ieps2);
-                const TOutput lnomarg = Kokkos::log(TOutput(1.0) - arg);
-                res = -TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg, ieps) + lnarg * lnomarg - TOutput(0.5) * ql::kPow<TOutput, TMass, TScale>(lnarg,2);
+                const TOutput lnomarg = ql::kLog(TOutput(ql::Constants<TScale>::_one()) - arg);
+                res = -TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg, ieps) + lnarg * lnomarg - TOutput(ql::Constants<TScale>::_half()) * ql::kPow<TOutput, TMass, TScale>(lnarg,2);
             }
         }
         return res;
     }
+
+    // // Helper function — returns the computed value instead of writing through a dynamic index in BIN4
+    // template<typename TOutput, typename TMass, typename TScale>
+    // KOKKOS_INLINE_FUNCTION
+    // TScale compute_irij(const TOutput& rij_j, const TMass& kij_j) {
+    //     if (ql::Imag(rij_j) == ql::Constants<TScale>::_zero()) {
+    //         const TOutput ki = TOutput(kij_j) - ql::Constants<TOutput>::template _ieps50<TOutput,TMass,TScale>();
+    //         const TOutput kk = ql::Constants<TOutput>::_half() * (ki + TOutput(ql::Sign(ql::Real(ki))) * ql::kSqrt((ki - ql::Constants<TOutput>::_two()) * (ki + ql::Constants<TOutput>::_two())));
+    //         auto val = (ql::kAbs(rij_j) - ql::Constants<TScale>::_one()) * ql::Imag(kk);
+    //         return TScale{val};
+    //     } else {
+    //         return ql::Constants<TScale>::_zero();
+    //     }
+    // }
 
     /*!
     * \param z1
@@ -385,14 +399,14 @@ namespace ql
     KOKKOS_INLINE_FUNCTION int eta(TOutput const& z1, TScale const& s1, TOutput const& z2, TScale const& s2, TScale const& s12) {
         
         TScale im1 = ql::Imag(z1), im2 = ql::Imag(z2), im12 = ql::Imag(z1 * z2);
-        if (im1 == 0.0) im1 = s1;
-        if (im2 == 0.0) im2 = s2;
-        if (im12 == 0.0) im12 = s12;
+        if (im1 == ql::Constants<TScale>::_zero()) im1 = s1;
+        if (im2 == ql::Constants<TScale>::_zero()) im2 = s2;
+        if (im12 == ql::Constants<TScale>::_zero()) im12 = s12;
 
         int eta;
-        if (im1 < 0.0 && im2 < 0.0 && im12 > 0.0)
+        if (im1 < ql::Constants<TScale>::_zero() && im2 < ql::Constants<TScale>::_zero() && im12 > ql::Constants<TScale>::_zero())
             eta = 1;
-        else if (im1 > 0.0 && im2 > 0.0 && im12 < 0.0)
+        else if (im1 > ql::Constants<TScale>::_zero() && im2 > ql::Constants<TScale>::_zero() && im12 < ql::Constants<TScale>::_zero())
             eta = -1;
         else
             eta = 0;
@@ -427,16 +441,16 @@ namespace ql
         TScale im1 = ql::Imag(c1);
         TScale im2 = ql::Imag(c2);
 
-        if (im1 == 0.0)
-        im1 = im1x;
-
-        if (im2 != 0.0)
-            etatilde = ql::eta<TOutput, TMass, TScale>(c1, im1x, c2, 0.0, 0.0);
-        else if ( ql::Real(c2) > 0.0)
+        if (im1 == ql::Constants<TScale>::_zero())
+            im1 = im1x;
+        
+        if (im2 != ql::Constants<TScale>::_zero())
+            etatilde = ql::eta<TOutput, TMass, TScale>(c1, im1x, c2, ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_zero());
+        else if ( ql::Real(c2) > ql::Constants<TScale>::_zero())
             etatilde = 0;
-        else if (im1 > 0.0 && im2x > 0.0)
+        else if (im1 > ql::Constants<TScale>::_zero() && im2x > ql::Constants<TScale>::_zero())
             etatilde = -1;
-        else if (im1 < 0.0 && im2x < 0.0)
+        else if (im1 < ql::Constants<TScale>::_zero() && im2x < ql::Constants<TScale>::_zero())
             etatilde = 1;
         else
             etatilde = 0;
@@ -459,7 +473,7 @@ namespace ql
 
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput eta5(TOutput const& a, TOutput const& b, TOutput const& c, TOutput const& d, TOutput const& e) {
-        TOutput res = TOutput(0.0);
+        TOutput res = TOutput(ql::Constants<TScale>::_zero());
         const TScale ima = ql::Sign(ql::Imag(a));
         const TScale imb = ql::Sign(ql::Imag(b));
         const TScale imc = ql::Sign(ql::Imag(c));
@@ -470,15 +484,15 @@ namespace ql
         {
             if (ima == imd)
             {
-                if (imc == ime)      res = TOutput(0.0); 
-                else if (ima != imc) res = ql::Constants::_2ipi<TOutput, TMass, TScale>() * TOutput(imc);
-                else                 res = ql::Constants::_2ipi<TOutput, TMass, TScale>() * TOutput(-ime);
+                if (imc == ime)      res = TOutput(ql::Constants<TScale>::_zero()); 
+                else if (ima != imc) res = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(imc);
+                else                 res = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(-ime);
             }
-            else if (ima != imc) res = ql::Constants::_2ipi<TOutput, TMass, TScale>() * TOutput(imc);
-            else res = TOutput(0.0);
+            else if (ima != imc) res = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(imc);
+            else res = TOutput(ql::Constants<TScale>::_zero());
         }
-        else if (ima == imd && ima != ime) res =  ql::Constants::_2ipi<TOutput, TMass, TScale>() * TOutput(-ime);
-        else res = TOutput(0.0);
+        else if (ima == imd && ima != ime) res =  ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(-ime);
+        else res = TOutput(ql::Constants<TScale>::_zero());
 
         return res;
     }
@@ -492,11 +506,11 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput eta3(TOutput const& a,TOutput const& b, TOutput const& c) {
-        TOutput res = TOutput(0.0);
+        TOutput res = TOutput(ql::Constants<TScale>::_zero());
         const TScale ima = ql::Sign(ql::Imag(a));
         const TScale imb = ql::Sign(ql::Imag(b));
         const TScale imc = ql::Sign(ql::Imag(c));
-        if (ima == imb && ima != imc) res = ql::Constants::_2ipi<TOutput, TMass, TScale>() * TOutput(imc);
+        if (ima == imb && ima != imc) res = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(imc);
         return res;
     }
 
@@ -510,7 +524,7 @@ namespace ql
         const TScale ima = ql::Imag(a);
         const TScale imb = ql::Imag(b);
         const TScale imab = ql::Imag(a * b);
-        return ql::Constants::_2ipi<TOutput, TMass, TScale>() * (ql::Htheta(-ima) * ql::Htheta(-imb) * ql::Htheta(imab) - ql::Htheta(ima) * ql::Htheta(imb) * ql::Htheta(-imab));
+        return ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * (ql::Htheta(-ima) * ql::Htheta(-imb) * ql::Htheta(imab) - ql::Htheta(ima) * ql::Htheta(imb) * ql::Htheta(-imab));
     }
 
 
@@ -525,26 +539,26 @@ namespace ql
         
         TOutput z[2]; //TODO:: change to hardcoded array of size 2
         z[i_in] = z_in;
-        z[1 - i_in] = TOutput(1.0) - z_in;
+        z[1 - i_in] = TOutput(ql::Constants<TScale>::_one()) - z_in;
 
         TOutput ltspence;
-        if (ql::Real(z[0]) < 0.5){
-            if (Kokkos::abs(z[0]) < 1.0)
+        if (ql::Real(z[0]) < ql::Constants<TScale>::_half()){
+            if (ql::kAbs(z[0]) < ql::Constants<TScale>::_one())
                 ltspence = ql::ltli2series<TOutput, TMass, TScale>(z[1],s);
             else {
                 const TOutput clnz = ql::cLn<TOutput, TMass, TScale>(-z[0], -s);
-                ltspence = TOutput(-ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - TOutput(0.5) * clnz * clnz - ql::ltli2series<TOutput, TMass, TScale>(-z[1] / z[0], -s);
+                ltspence = TOutput(-ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - TOutput(ql::Constants<TScale>::_half()) * clnz * clnz - ql::ltli2series<TOutput, TMass, TScale>(-z[1] / z[0], -s);
             }
         }
         else {
-            const TScale az1 = Kokkos::abs(z[1]);
-            if (az1 < ql::Constants::_eps15())
-                ltspence = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>());
-            else if (az1 < 1.0)
-                ltspence = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::cLn<TOutput, TMass, TScale>(z[0],s) * ql::cLn<TOutput, TMass, TScale>(z[1], -s) - ql::ltli2series<TOutput, TMass, TScale>(z[0],-s);
+            const TScale az1 = ql::kAbs(z[1]);
+            if (az1 < ql::Constants<TScale>::_eps15())
+                ltspence = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>());
+            else if (az1 < ql::Constants<TScale>::_one())
+                ltspence = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::cLn<TOutput, TMass, TScale>(z[0],s) * ql::cLn<TOutput, TMass, TScale>(z[1], -s) - ql::ltli2series<TOutput, TMass, TScale>(z[0],-s);
             else {
                 const TOutput clnz = ql::cLn<TOutput, TMass, TScale>(-z[0], -s);
-                ltspence = TOutput(2.0 * ql::Constants::_pi2o6<TOutput, TMass, TScale>()) + TOutput(0.5) * clnz * clnz - ql::cLn<TOutput, TMass, TScale>(z[0], s) * ql::cLn<TOutput, TMass, TScale>(z[1], -s) + ql::ltli2series<TOutput, TMass, TScale>(-z[0] / z[1], s);
+                ltspence = TOutput(ql::Constants<TScale>::_two() * ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) + TOutput(ql::Constants<TScale>::_half()) * clnz * clnz - ql::cLn<TOutput, TMass, TScale>(z[0], s) * ql::cLn<TOutput, TMass, TScale>(z[1], -s) + ql::ltli2series<TOutput, TMass, TScale>(-z[0] / z[1], s);
             }
         }
 
@@ -561,23 +575,23 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput cspence(TOutput const& z1, TScale const& im1, TOutput const& z2, TScale const& im2) {
-        TOutput cspence = TOutput(0.0);
+        TOutput cspence = TOutput(ql::Constants<TScale>::_zero());
         const TOutput z12 = z1 * z2;
         const TScale im12 = im2 * ql::Sign(ql::Real(z1));
 
-        if (ql::Real(z12) > 0.5) {
-            cspence = ql::ltspence<TOutput, TMass, TScale>(1, z12, 0.0);
+        if (ql::Real(z12) > ql::Constants<TScale>::_half()) {
+            cspence = ql::ltspence<TOutput, TMass, TScale>(1, z12, ql::Constants<TScale>::_zero());
             const int etas = ql::eta<TOutput, TMass, TScale>(z1, im1, z2, im2, im12);
             if (etas != 0) 
-                cspence += TOutput(etas) * ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - z12, -im12) * ql::Constants::_2ipi<TOutput, TMass, TScale>();
+                cspence += TOutput(etas) * ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - z12, -im12) * ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>();
         }
-        else if (Kokkos::abs(z12) < ql::Constants::_eps4()) {
-            cspence = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>());
-            if (Kokkos::abs(z12) >  ql::Constants::_eps14())
-                cspence += -ql::ltspence<TOutput, TMass, TScale>(0, z12, 0.0) + (ql::cLn<TOutput, TMass, TScale>(z1,im1) + ql::cLn<TOutput, TMass, TScale>(z2,im2)) * z12 * (TOutput(1.0) + z12 * (TOutput(0.5) + z12 * (TOutput(1.0) / TOutput(3.0) + z12 / TOutput(4.0))));
+        else if (ql::kAbs(z12) < ql::Constants<TScale>::_eps4()) {
+            cspence = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>());
+            if (ql::kAbs(z12) >  ql::Constants<TScale>::_eps14())
+                cspence += -ql::ltspence<TOutput, TMass, TScale>(0, z12, ql::Constants<TScale>::_zero()) + (ql::cLn<TOutput, TMass, TScale>(z1,im1) + ql::cLn<TOutput, TMass, TScale>(z2,im2)) * z12 * (TOutput(ql::Constants<TScale>::_one()) + z12 * (TOutput(ql::Constants<TScale>::_half()) + z12 * (TOutput(ql::Constants<TScale>::_one()) / TOutput(ql::Constants<TScale>::_three()) + z12 / TOutput(ql::Constants<TScale>::_four()))));
         }
         else
-            cspence = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::ltspence<TOutput, TMass, TScale>(0, z12, 0.0) - (ql::cLn<TOutput, TMass, TScale>(z1, im1) + ql::cLn<TOutput, TMass, TScale>(z2, im2)) * ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - z12, 0.0);
+            cspence = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::ltspence<TOutput, TMass, TScale>(0, z12, ql::Constants<TScale>::_zero()) - (ql::cLn<TOutput, TMass, TScale>(z1, im1) + ql::cLn<TOutput, TMass, TScale>(z2, im2)) * ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - z12, ql::Constants<TScale>::_zero());
 
         return cspence;
     }
@@ -604,9 +618,9 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Li2omrat(TScale const& x, TScale const& y) {
         const TScale omarg = x / y;
-        const TScale arg = 1.0 - omarg;
-        if (arg > 1.0)
-            return TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(omarg)) - Kokkos::log(arg) * ql::Lnrat<TOutput, TMass, TScale>(x, y);
+        const TScale arg = ql::Constants<TScale>::_one() - omarg;
+        if (arg > ql::Constants<TScale>::_one())
+            return TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(omarg)) - ql::kLog(arg) * ql::Lnrat<TOutput, TMass, TScale>(x, y);
         else
             return TOutput(ql::ddilog<TOutput, TMass, TScale>(arg));
     }
@@ -615,12 +629,12 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Li2omrat(TOutput const& x, TOutput const& y, TScale const& ieps1, TScale const& ieps2) {
         const TOutput omarg = x / y;
-        const TOutput arg = TOutput(1.0) - omarg;
+        const TOutput arg = TOutput(ql::Constants<TScale>::_one()) - omarg;
         const TScale isarg = ql::Sign(ql::Real(x) * ieps2 - ql::Real(y) * ieps1);
 
-        if (Abs(arg) > 1.0) {
+        if (ql::kAbs(arg) > ql::Constants<TScale>::_one()) {
             const TScale isomarg = -isarg;
-            return TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(omarg, isomarg) - ql::cLn<TOutput, TMass, TScale>(omarg, isomarg) * ql::cLn<TOutput, TMass, TScale>(arg, isarg);
+            return TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(omarg, isomarg) - ql::cLn<TOutput, TMass, TScale>(omarg, isomarg) * ql::cLn<TOutput, TMass, TScale>(arg, isarg);
         }
         else
             return ql::denspence<TOutput, TMass, TScale>(arg, isarg);
@@ -643,20 +657,20 @@ namespace ql
         const TScale ieps = ql::Sign(ql::Real(z2) * ieps1 + ql::Real(z1) * ieps2);
 
         TOutput prod, res;
-        if (Kokkos::abs(arg) <= 1.0)
+        if (ql::kAbs(arg) <= ql::Constants<TScale>::_one())
         {
-            if (arg == TOutput(0.0) || arg == TOutput(1.0))
-                prod = TOutput(0.0);
+            if (arg == TOutput(ql::Constants<TScale>::_zero()) || arg == TOutput(ql::Constants<TScale>::_one()))
+                prod = TOutput(ql::Constants<TScale>::_zero());
             else
-                prod = (ql::cLn<TOutput, TMass, TScale>(z1, ieps1)+ ql::cLn<TOutput, TMass, TScale>(z2, ieps2)) * ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - arg, -ieps);
-            res = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
+                prod = (ql::cLn<TOutput, TMass, TScale>(z1, ieps1)+ ql::cLn<TOutput, TMass, TScale>(z2, ieps2)) * ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - arg, -ieps);
+            res = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
         }
-        else if (Kokkos::abs(arg) > 1.0)
+        else if (ql::kAbs(arg) > ql::Constants<TScale>::_one())
         {
-            const TOutput arg2 = TOutput(1.0) / (z1 * z2);
-            const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - arg2, -ieps);
+            const TOutput arg2 = TOutput(ql::Constants<TScale>::_one()) / (z1 * z2);
+            const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - arg2, -ieps);
             const TOutput lnarg = -ql::cLn<TOutput, TMass, TScale>(z1, ieps1) - ql::cLn<TOutput, TMass, TScale>(z2, ieps2);
-            res = TOutput(-ql::Constants::_pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg2, ieps) + lnarg * lnomarg - TOutput(0.5) * lnarg * lnarg;
+            res = TOutput(-ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg2, ieps) + lnarg * lnomarg - TOutput(ql::Constants<TScale>::_half()) * lnarg * lnarg;
         }
         return res;
     }
@@ -673,21 +687,21 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Li2omx2(TScale const& v, TScale const& w, TScale const& x, TScale const& y) {
         const TScale arg = (v * w) / (x * y);
-        const TScale omarg = 1.0 - arg;
+        const TScale omarg = ql::Constants<TScale>::_one() - arg;
         TOutput prod, Li2omx2;
 
-        if (Kokkos::abs(arg) <= 1.0) {
-            if (Kokkos::abs(arg) == 0.0 || Kokkos::abs(arg) == 1.0)
-                prod = 0.0;
+        if (ql::kAbs(arg) <= ql::Constants<TScale>::_one()) {
+            if (ql::kAbs(arg) == ql::Constants<TScale>::_zero() || ql::kAbs(arg) == ql::Constants<TScale>::_one())
+                prod = TOutput(ql::Constants<TScale>::_zero());
             else
-                prod = (ql::Lnrat<TOutput, TMass, TScale>(v, x) + ql::Lnrat<TOutput, TMass, TScale>(w, y)) * TOutput(Kokkos::log(omarg));
-            Li2omx2 = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(arg)) - prod;
+                prod = (ql::Lnrat<TOutput, TMass, TScale>(v, x) + ql::Lnrat<TOutput, TMass, TScale>(w, y)) * TOutput(ql::kLog(omarg));
+            Li2omx2 = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(arg)) - prod;
         }
-        else if (Kokkos::abs(arg) > 1.0) {
+        else if (ql::kAbs(arg) > ql::Constants<TScale>::_one()) {
             const TScale arg2 = (x * y) / (v * w);
             const TOutput lnarg = TOutput(-ql::Lnrat<TOutput, TMass, TScale>(v, x) - ql::Lnrat<TOutput, TMass, TScale>(w, y));
-            const TOutput lnomarg = TOutput(Kokkos::log(1.0 - arg2));
-            Li2omx2 = -TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(arg2)) + lnarg * lnomarg - TOutput(0.5) * lnarg * lnarg;
+            const TOutput lnomarg = TOutput(ql::kLog(ql::Constants<TScale>::_one() - arg2));
+            Li2omx2 = -TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>() - ql::ddilog<TOutput, TMass, TScale>(arg2)) + lnarg * lnomarg - TOutput(ql::Constants<TScale>::_half()) * lnarg * lnarg;
         }
 
         return Li2omx2;
@@ -717,27 +731,27 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput cLi2omx3(TOutput const& z1, TOutput const& z2, TOutput const& z3, TScale const& ieps1, TScale const& ieps2, TScale const& ieps3) {
         const TOutput arg = z1 * z2 * z3;
 
-        TScale ieps = TScale(0.0);
+        TScale ieps = ql::Constants<TScale>::_zero();
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(arg)))
             ieps = ql::Sign(ql::Real(z2 * z3) * ieps1 + ql::Real(z1 * z3) * ieps2 + ql::Real(z1 * z2) * ieps3);
 
-        TOutput res = TOutput(0.0);
-        if (Kokkos::abs(arg) <= 1.0) {
+        TOutput res = TOutput(ql::Constants<TScale>::_zero());
+        if (ql::kAbs(arg) <= ql::Constants<TScale>::_one()) {
             TOutput prod;
-            if (arg == TOutput(0.0) || arg == TOutput(1.0))
-                prod = 0.0;
+            if (arg == TOutput(ql::Constants<TScale>::_zero()) || arg == TOutput(ql::Constants<TScale>::_one()))
+                prod = TOutput(ql::Constants<TScale>::_zero());
             else {
                 const TOutput lnarg = ql::cLn<TOutput, TMass, TScale>(z1, ieps1) + ql::cLn<TOutput, TMass, TScale>(z2, ieps2) + ql::cLn<TOutput, TMass, TScale>(z3, ieps3);
-                const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - arg, 0.0);
+                const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - arg, ql::Constants<TScale>::_zero());
                 prod = lnarg * lnomarg;
             }
-            res = TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
+            res = TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) - ql::denspence<TOutput, TMass, TScale>(arg, ieps) - prod;
         }
         else {
-            const TOutput arg2 = TOutput(1.0) / (z1 * z2 * z3);
+            const TOutput arg2 = TOutput(ql::Constants<TScale>::_one()) / (z1 * z2 * z3);
             const TOutput lnarg = -ql::cLn<TOutput, TMass, TScale>(z1, ieps1) - ql::cLn<TOutput, TMass, TScale>(z2, ieps2) - ql::cLn<TOutput, TMass, TScale>(z3, ieps3);
-            const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(1.0) - arg2, 0.0);
-            res = - TOutput(ql::Constants::_pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg2, ieps) + lnarg * lnomarg - TOutput(0.5) * lnarg * lnarg;
+            const TOutput lnomarg = ql::cLn<TOutput, TMass, TScale>(TOutput(ql::Constants<TScale>::_one()) - arg2, ql::Constants<TScale>::_zero());
+            res = - TOutput(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>()) + ql::denspence<TOutput, TMass, TScale>(arg2, ieps) + lnarg * lnomarg - TOutput(ql::Constants<TScale>::_half()) * lnarg * lnarg;
         }
 
         return res;
@@ -752,9 +766,9 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput L0(TMass const& x, TMass const& y) {
         TOutput L0;
-        const TMass denom = 1.0 - x / y;
-        if (Kokkos::abs(denom) < ql::Constants::_eps7())
-            L0 = -TOutput(1.0) - TOutput(denom * (0.5 + denom /3.0));
+        const TMass denom = TMass(ql::Constants<TMass>::_one()) - x / y;
+        if (ql::kAbs(denom) < ql::Constants<TScale>::_eps7())
+            L0 = -TOutput(ql::Constants<TScale>::_one()) - TOutput(denom * (TMass(ql::Constants<TMass>::_half()) + denom / TMass(ql::Constants<TMass>::_three())));
         else
             L0 = ql::Lnrat<TOutput, TMass, TScale>(x, y) / TOutput(denom);
 
@@ -770,11 +784,11 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput L1(TMass const& x, TMass const& y) {
         TOutput L1;
-        const TMass denom = 1.0 - x / y;
-        if (Kokkos::abs(denom) < ql::Constants::_eps7())
-            L1 = -TOutput(1.0) * TOutput(0.5) - TOutput(denom / 3.0 * (1.0 + 3.0 * denom / 4.0));
+        const TMass denom = TMass(ql::Constants<TMass>::_one()) - x / y;
+        if (ql::kAbs(denom) < ql::Constants<TScale>::_eps7())
+            L1 = -TOutput(ql::Constants<TScale>::_one()) * TOutput(ql::Constants<TScale>::_half()) - TOutput(denom / TMass(ql::Constants<TMass>::_three()) * (TMass(ql::Constants<TMass>::_one()) + TMass(ql::Constants<TMass>::_three()) * denom / TMass(ql::Constants<TMass>::_four())));
         else
-            L1 = (ql::L0<TOutput, TMass, TScale>(x, y) + TOutput(1.0)) / TOutput(denom);
+            L1 = (ql::L0<TOutput, TMass, TScale>(x, y) + TOutput(ql::Constants<TScale>::_one())) / TOutput(denom);
 
         return L1;
     }
@@ -789,7 +803,7 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void solveabc(TMass const& a, TMass const&b, TMass const& c, Kokkos::Array<TOutput, 2>& z) {
-        const TMass discr = b * b - TMass(4.0) * a * c;
+        const TMass discr = b * b - TMass(ql::Constants<TMass>::_four()) * a * c;
 
         if (ql::iszero<TOutput, TMass, TScale>(a)) {
             Kokkos::printf("solveabc -- equation is not quadratic");
@@ -799,12 +813,12 @@ namespace ql
             
             const TMass sgnb = ql::Sign(ql::Real(b));
             if (ql::iszero<TOutput, TMass, TScale>(ql::Real(b))) {
-                z[0] = -(TOutput(b) - Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
-                z[1] = -(TOutput(b) + Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
+                z[0] = -(TOutput(b) - ql::kSqrt(TOutput(discr))) / (TOutput(ql::Constants<TScale>::_two()) * a);
+                z[1] = -(TOutput(b) + ql::kSqrt(TOutput(discr))) / (TOutput(ql::Constants<TScale>::_two()) * a);
             }
             else {
-                if (ql::Real(discr) > 0) {
-                    const TMass q = -0.5 * (b + sgnb * Kokkos::sqrt(discr));
+                if (ql::Real(discr) > TMass(ql::Constants<TMass>::_zero())) {
+                    const TMass q = TMass(-ql::Constants<TMass>::_half()) * (b + sgnb * ql::kSqrt(discr));
                     if (ql::Real(b) > 0) {
                         z[0] = TOutput(c / q);
                         z[1] = TOutput(q / a);
@@ -815,25 +829,25 @@ namespace ql
                     }
                 }
                 else {
-                    z[1] = -(TOutput(b) + sgnb * Kokkos::sqrt(TOutput(discr))) / (TOutput(2.0) * a);
-                    z[0] = Kokkos::conj(z[1]);
+                    z[1] = -(TOutput(b) + sgnb * ql::kSqrt(TOutput(discr))) / (TOutput(ql::Constants<TScale>::_two()) * a);
+                    z[0] = ql::kConj(z[1]);
                     if (ql::Real(b) < 0) {
                         z[0] = z[1];
-                        z[1] = Kokkos::conj(z[0]);
+                        z[1] = ql::kConj(z[0]);
                     }
                 }
             }
         }
         else {
-            TOutput qq = -TOutput(b) + Kokkos::sqrt(TOutput(discr));
-            TOutput hh = -TOutput(b) - Kokkos::sqrt(TOutput(discr));
+            TOutput qq = -TOutput(b) + ql::kSqrt(TOutput(discr));
+            TOutput hh = -TOutput(b) - ql::kSqrt(TOutput(discr));
 
-            z[0] = qq * TOutput(0.5) / TOutput(a);
-            z[1] = (TOutput(2.0) * TOutput(c)) / qq;
+            z[0] = qq * TOutput(ql::Constants<TScale>::_half()) / TOutput(a);
+            z[1] = (TOutput(ql::Constants<TScale>::_two()) * TOutput(c)) / qq;
 
-            if (ql::Imag(z[0]) > 0.0) {
-                z[0] = hh * TOutput(0.5) / TOutput(a);
-                z[1] = (TOutput(2.0) * TOutput(c)) / hh;
+            if (ql::Imag(z[0]) > ql::Constants<TScale>::_zero()) {
+                z[0] = hh * TOutput(ql::Constants<TScale>::_half()) / TOutput(a);
+                z[1] = (TOutput(ql::Constants<TScale>::_two()) * TOutput(c)) / hh;
             }
         }
     }
@@ -849,25 +863,25 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, TOutput const& d, Kokkos::Array<TOutput, 2>& z) {
-        if (a == TOutput(0.0)) {
-            if (b == TOutput(0.0)) {
+        if (a == TOutput(ql::Constants<TScale>::_zero())) {
+            if (b == TOutput(ql::Constants<TScale>::_zero())) {
                 Kokkos::printf("solveabcd - no possible solution\n");
             }
             z[0] = - c / b; z[1] = z[0];
         }
-        else if (c == TOutput(0.0)) {
-            z[0] = d / a; z[1] = TOutput(0.0);
+        else if (c == TOutput(ql::Constants<TScale>::_zero())) {
+            z[0] = d / a; z[1] = TOutput(ql::Constants<TScale>::_zero());
         }
         else {
             const TOutput up = - b + d;
             const TOutput dn = - b - d;
-            if (Kokkos::abs(up) >= Kokkos::abs(dn)) {
-                z[0] = TOutput(0.5) * up / a;
-                z[1] = TOutput(2.0) * c / up;
+            if (ql::kAbs(up) >= ql::kAbs(dn)) {
+                z[0] = TOutput(ql::Constants<TScale>::_half()) * up / a;
+                z[1] = TOutput(ql::Constants<TScale>::_two()) * c / up;
             }
             else {
-                z[1] = TOutput(0.5) * dn / a;
-                z[0] = TOutput(2.0) * c / dn;
+                z[1] = TOutput(ql::Constants<TScale>::_half()) * dn / a;
+                z[0] = TOutput(ql::Constants<TScale>::_two()) * c / dn;
             }
         }
     }
@@ -883,26 +897,26 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void solveabcd(TOutput const& a, TOutput const&b, TOutput const& c, Kokkos::Array<TOutput, 2>& z) {
-        if (a == TOutput(0.0)) {
-            if (b == TOutput(0.0)) {
+        if (a == TOutput(ql::Constants<TScale>::_zero())) {
+            if (b == TOutput(ql::Constants<TScale>::_zero())) {
                 Kokkos::printf("solveabcd - no possible solution\n");
             }
             z[0] = -c / b; z[1] = z[0];
         }
-        else if (c == TOutput(0.0)) {
-            z[0] = TOutput(0.0); z[1] = TOutput(0.0);
+        else if (c == TOutput(ql::Constants<TScale>::_zero())) {
+            z[0] = TOutput(ql::Constants<TScale>::_zero()); z[1] = TOutput(ql::Constants<TScale>::_zero());
         }
         else {
-            const TOutput d = Kokkos::sqrt(b * b - 4.0 * a * c);
+            const TOutput d = ql::kSqrt(b * b - TOutput(ql::Constants<TScale>::_four()) * a * c);
             const TOutput up = - b + d;
             const TOutput dn = - b - d;
-            if (Kokkos::abs(up) >= Kokkos::abs(dn)) {
-                z[0] = TOutput(0.5) * up / a;
-                z[1] = TOutput(2.0) * c / up;
+            if (ql::kAbs(up) >= ql::kAbs(dn)) {
+                z[0] = TOutput(ql::Constants<TScale>::_half()) * up / a;
+                z[1] = TOutput(ql::Constants<TScale>::_two()) * c / up;
             }
             else {
-                z[1] = TOutput(0.5) * dn / a;
-                z[0] = TOutput(2.0) * c / dn;
+                z[1] = TOutput(ql::Constants<TScale>::_half()) * dn / a;
+                z[0] = TOutput(ql::Constants<TScale>::_two()) * c / dn;
             }
         }
     }
@@ -918,10 +932,10 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void ratgam(TOutput &ratp, TOutput &ratm, TScale &ieps, TMass const& p3sq, TMass const& m3sq, TMass const& m4sq) {
         
-        const TOutput root = Kokkos::sqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq - m3sq + m4sq, 2) - 4.0 * m4sq * p3sq));
+        const TOutput root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq - m3sq + m4sq, 2) - TMass(ql::Constants<TMass>::_four()) * m4sq * p3sq));
         ratp = (TOutput(p3sq + m4sq - m3sq) + root) / (TOutput(-p3sq + m4sq - m3sq) + root);
         ratm = (TOutput(p3sq + m4sq - m3sq) - root) / (TOutput(-p3sq + m4sq - m3sq) - root);
-        ieps = 0.0;
+        ieps = ql::Constants<TScale>::_zero();
     }
 
 
@@ -936,13 +950,13 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void ratreal(TMass const& si, TMass const& ta, TMass &rat, TScale &ieps) {
         rat = si / ta;
-        if (ql::Real(rat) > 0.0)
-            ieps = 0.0;
-        else if (ql::Real(si) < 0.0)
-            ieps = -1.0;
-        else if (ql::Real(ta) < 0.0)
-            ieps = 1.0;
-        else if (ql::Real(ta) == 0.0) {
+        if (ql::Real(rat) > ql::Constants<TScale>::_zero())
+            ieps = ql::Constants<TScale>::_zero();
+        else if (ql::Real(si) < ql::Constants<TScale>::_zero())
+            ieps = -ql::Constants<TScale>::_one();
+        else if (ql::Real(ta) < ql::Constants<TScale>::_zero())
+            ieps = ql::Constants<TScale>::_one();
+        else if (ql::Real(ta) == ql::Constants<TScale>::_zero()) {
             Kokkos::printf("error in ratreal\n");
         }
     }
@@ -956,8 +970,8 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Zlogint(TOutput const& z, TScale const& ieps) {
-        const TOutput omz = TOutput(1.0) - z;
-        return omz * (ql::cLn<TOutput, TMass, TScale>(omz, ieps) - TOutput(1.0)) - (-z) * (ql::cLn<TOutput, TMass, TScale>(-z, ieps) - TOutput(1.0));
+        const TOutput omz = TOutput(ql::Constants<TScale>::_one()) - z;
+        return omz * (ql::cLn<TOutput, TMass, TScale>(omz, ieps) - TOutput(ql::Constants<TScale>::_one())) - (-z) * (ql::cLn<TOutput, TMass, TScale>(-z, ieps) - TOutput(ql::Constants<TScale>::_one()));
     }
 
 
@@ -969,7 +983,7 @@ namespace ql
         
         const TOutput b = (s1 + s2) * (s1 - s2) - a;
         const TOutput c = s2 * s2;
-        const TOutput d = Kokkos::sqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
+        const TOutput d = ql::kSqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
         Kokkos::Array<TOutput, 2> y;
         Kokkos::Array<TOutput, 2> s;
         TOutput res;
@@ -980,12 +994,12 @@ namespace ql
         const TOutput dq0 = (y0 - y[0]);
         const TOutput dq1 = (y0 - y[1]);
 
-        const TOutput OneOdq0 = TOutput(1.0) / dq0;
-        const TOutput OneMy0 = TOutput(1.0) - y[0];
+        const TOutput OneOdq0 = TOutput(ql::Constants<TScale>::_one()) / dq0;
+        const TOutput OneMy0 = TOutput(ql::Constants<TScale>::_one()) - y[0];
         const TScale SignImagOneOdq0 = ql::Sign(ql::Imag(OneOdq0));
 
-        const TOutput OneOdq1 = TOutput(1.0) / dq1;
-        const TOutput OneMy1 = TOutput(1.0) - y[1];
+        const TOutput OneOdq1 = TOutput(ql::Constants<TScale>::_one()) / dq1;
+        const TOutput OneMy1 = TOutput(ql::Constants<TScale>::_one()) - y[1];
         const TScale SignImagOneOdq1 = ql::Sign(ql::Imag(OneOdq1));
 
         res = ql::cspence<TOutput, TMass, TScale>(-y[0], ql::Sign(ql::Imag(-y[0])), OneOdq0, SignImagOneOdq0)
@@ -995,17 +1009,17 @@ namespace ql
 
         TOutput zz = y0 * (a * y0 + b);
 
-        if (Kokkos::abs(ql::Real(zz)) * ql::Constants::_reps() * ql::Constants::_reps() <= Kokkos::abs(ql::Imag(zz)) * ql::Constants::_neglig() && Kokkos::abs(ql::Imag(zz)) <= Kokkos::abs(ql::Real(zz)) * ql::Constants::_neglig())
+        if (ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_reps() * ql::Constants<TScale>::_reps() <= ql::kAbs(ql::Imag(zz)) * ql::Constants<TScale>::_neglig() && ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
             zz = (TOutput(ql::Real(zz)) + c) / a;
         else
             zz = (zz + c) / a;
 
         // ajust complex logs
         TOutput extra = ql::eta3<TOutput, TMass, TScale>(-y[0], -y[1], c / a) - ql::eta3<TOutput, TMass, TScale>(dq0, dq1, zz);
-        if (ql::Real(a) < 0.0 && ql::Imag(zz) < 0.0) 
-            extra -= ql::Constants::_2ipi<TOutput, TMass, TScale>();
-        if (extra != TOutput(0.0)) {
-            const TOutput arg4 = (y0 - TOutput(1.0)) / y0;
+        if (ql::Real(a) < ql::Constants<TScale>::_zero() && ql::Imag(zz) < ql::Constants<TScale>::_zero()) 
+            extra -= ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>();
+        if (extra != TOutput(ql::Constants<TScale>::_zero())) {
+            const TOutput arg4 = (y0 - TOutput(ql::Constants<TScale>::_one())) / y0;
             res += extra * ql::cLn<TOutput, TMass, TScale>(arg4, ql::Sign(ql::Imag(arg4)));
         }
 
@@ -1020,7 +1034,7 @@ namespace ql
     KOKKOS_INLINE_FUNCTION TOutput R3int(TOutput const& a, TOutput const& s1, TOutput const& s2, TOutput const& t1) {
         const TOutput b = (s1 + s2) * (s1 - s2) - a;
         const TOutput c = s2 * s2;
-        const TOutput d = Kokkos::sqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
+        const TOutput d = ql::kSqrt((a - (s1 + s2) * (s1 + s2)) * (a - (s1 - s2) * (s1 - s2)));
         
         Kokkos::Array<TOutput, 2> y;
         TOutput res;
@@ -1030,12 +1044,12 @@ namespace ql
         const TOutput dq0 = (y0 - y[0]);
         const TOutput dq1 = (y0 - y[1]);
 
-        const TOutput OneOdq0 = TOutput(1.0) / dq0;
-        const TOutput OneMy0 = TOutput(1.0) - y[0];
+        const TOutput OneOdq0 = TOutput(ql::Constants<TScale>::_one()) / dq0;
+        const TOutput OneMy0 = TOutput(ql::Constants<TScale>::_one()) - y[0];
         const TScale SignImagOneOdq0 = ql::Sign(ql::Imag(OneOdq0));
 
-        const TOutput OneOdq1 = TOutput(1.0) / dq1;
-        const TOutput OneMy1 = TOutput(1.0) - y[1];
+        const TOutput OneOdq1 = TOutput(ql::Constants<TScale>::_one()) / dq1;
+        const TOutput OneMy1 = TOutput(ql::Constants<TScale>::_one()) - y[1];
         const TScale SignImagOneOdq1 = ql::Sign(ql::Imag(OneOdq1));
 
         res = ql::cspence<TOutput, TMass, TScale>(-y[0], ql::Sign(ql::Imag(-y[0])), OneOdq0, SignImagOneOdq0)
@@ -1045,17 +1059,17 @@ namespace ql
 
         TOutput zz = y0 * (a * y0 + b);
 
-        if (Kokkos::abs(ql::Real(zz)) * ql::Constants::_reps() * ql::Constants::_reps() <= Kokkos::abs(ql::Imag(zz)) * ql::Constants::_neglig() && Kokkos::abs(ql::Imag(zz)) <= Kokkos::abs(ql::Real(zz)) * ql::Constants::_neglig())
+        if (ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_reps() * ql::Constants<TScale>::_reps() <= ql::kAbs(ql::Imag(zz)) * ql::Constants<TScale>::_neglig() && ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
             zz = (TOutput(ql::Real(zz)) + c) / a;
         else
             zz = (zz + c) / a;
 
         // ajust complex logs
         TOutput extra = ql::eta3<TOutput, TMass, TScale>(-y[0], -y[1], c / a) - ql::eta3<TOutput, TMass, TScale>(dq0, dq1, zz);
-        if (ql::Real(a) < 0.0 && ql::Imag(zz) < 0.0)
-            extra -= ql::Constants::_2ipi<TOutput, TMass, TScale>();
-        if (extra != TOutput(0.0)) {
-            const TOutput arg4 = (y0 - TOutput(1.0))/y0;
+        if (ql::Real(a) < ql::Constants<TScale>::_zero() && ql::Imag(zz) < ql::Constants<TScale>::_zero())
+            extra -= ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>();
+        if (extra != TOutput(ql::Constants<TScale>::_zero())) {
+            const TOutput arg4 = (y0 - TOutput(ql::Constants<TScale>::_one()))/y0;
             res += extra * ql::cLn<TOutput, TMass, TScale>(arg4, ql::Sign(ql::Imag(arg4)));
         }
 
@@ -1072,16 +1086,16 @@ namespace ql
         const TOutput y1 = -b / a;
         const TOutput dq0 = y0 - y1;
 
-        const TOutput oneOdq0 = TOutput(1.0) / dq0;
+        const TOutput oneOdq0 = TOutput(ql::Constants<TScale>::_one()) / dq0;
         const TScale  SignImagOneOdq0 = ql::Sign(ql::Imag(oneOdq0));
-        const TOutput oneMy1 = TOutput(1.0) - y1;
+        const TOutput oneMy1 = TOutput(ql::Constants<TScale>::_one()) - y1;
 
         TOutput res = ql::cspence<TOutput, TMass, TScale>(-y1, ql::Sign(ql::Imag(-y1)), oneOdq0, SignImagOneOdq0)
                      -ql::cspence<TOutput, TMass, TScale>(oneMy1, ql::Sign(ql::Imag(oneMy1)), oneOdq0, SignImagOneOdq0);
 
         TOutput extra = ql::eta5<TOutput, TMass, TScale>(a, -y1, b, dq0, a * dq0);
-        if (extra != TOutput(0.0)) {
-            const TOutput arg4 = (y0 - TOutput(1.0)) / y0;
+        if (extra != TOutput(ql::Constants<TScale>::_zero())) {
+            const TOutput arg4 = (y0 - TOutput(ql::Constants<TScale>::_one())) / y0;
             res += extra * ql::cLn<TOutput, TMass, TScale>(arg4, ql::Sign(ql::Imag(arg4)));
         }
         return res;
@@ -1097,13 +1111,13 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput Rint(TOutput const& y, TOutput const& z, TScale const& ieps) {
         
-        const TOutput omz = TOutput(1.0) - z;
-        const TOutput ymone = y - TOutput(1.0);
-        const TOutput invymz = TOutput(1.0)/(y - z);
+        const TOutput omz = TOutput(ql::Constants<TScale>::_one()) - z;
+        const TOutput ymone = y - TOutput(ql::Constants<TScale>::_one());
+        const TOutput invymz = TOutput(ql::Constants<TScale>::_one())/(y - z);
         const TOutput c[2] = { y * invymz, ymone * invymz }; 
 
-        if (ql::Imag(z) != 0.0) {
-            const TOutput c2ipi = TOutput{0.0, 2.0 * ql::Constants::_pi()};
+        if (ql::Imag(z) != ql::Constants<TScale>::_zero()) {
+            const TOutput c2ipi = TOutput{ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_two() * ql::Constants<TScale>::_pi()};
             const TOutput a = -z;
             const TOutput b = invymz;
             const TOutput ab= -z * invymz;
@@ -1114,11 +1128,11 @@ namespace ql
             const TOutput eta2 = c2ipi * TOutput( ql::Htheta(-ql::Imag(a2)) * ql::Htheta(-ql::Imag(b)) * ql::Htheta(ql::Imag(ab2))
                                                  -ql::Htheta(ql::Imag(a2)) * ql::Htheta(ql::Imag(b)) * ql::Htheta(-ql::Imag(ab2)) );
 
-            TOutput logc1 = TOutput(0.0), logc2 = TOutput(0.0);
-            if (eta1 != TOutput(0.0)) logc1 = TOutput(Kokkos::log(c[0]));
-            if (eta2 != TOutput(0.0)) logc2 = TOutput(Kokkos::log(c[1]));
+            TOutput logc1 = TOutput(ql::Constants<TScale>::_zero()), logc2 = TOutput(ql::Constants<TScale>::_zero());
+            if (eta1 != TOutput(ql::Constants<TScale>::_zero())) logc1 = TOutput(ql::kLog(c[0]));
+            if (eta2 != TOutput(ql::Constants<TScale>::_zero())) logc2 = TOutput(ql::kLog(c[1]));
 
-            return ql::denspence<TOutput, TMass, TScale>(c[0], 0.0) - ql::denspence<TOutput, TMass, TScale>(c[1], 0.0) + eta1 * logc1 - eta2 * logc2;
+            return ql::denspence<TOutput, TMass, TScale>(c[0], ql::Constants<TScale>::_zero()) - ql::denspence<TOutput, TMass, TScale>(c[1], ql::Constants<TScale>::_zero()) + eta1 * logc1 - eta2 * logc2;
         }
         else {
             const TScale ieps1 = -ieps * ql::Sign(ql::Real(y));
@@ -1135,21 +1149,21 @@ namespace ql
     */
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void R(TOutput &r, TOutput &d, TOutput const& q) {
-        d = Kokkos::sqrt(q * q - 4.0);
+        d = ql::kSqrt(q * q - TOutput(ql::Constants<TScale>::_four()));
         r  = q + d;
         TOutput r2 = q - d;
-        TScale a = Kokkos::abs(r), b = Kokkos::abs(r2);
+        TScale a = ql::kAbs(r), b = ql::kAbs(r2);
         if (b > a) { 
             r = r2; 
             d = -d;
         }
         a = ql::Imag(q);
         b = ql::Imag(r);
-        if (a == 0.0) {
-            if (b <= 0.0)
-                r /= TOutput(2.0);
+        if (a == ql::Constants<TScale>::_zero()) {
+            if (b <= ql::Constants<TScale>::_zero())
+                r /= TOutput(ql::Constants<TScale>::_two());
             else {
-                r = TOutput(2.0) / r;
+                r = TOutput(ql::Constants<TScale>::_two()) / r;
                 d = -d;
             }
         }
@@ -1157,9 +1171,9 @@ namespace ql
             const TScale ik = ql::Sign(ql::Real(a));
             const TScale ir = ql::Sign(ql::Real(b));
             if (ir == ik)
-                r /= TOutput(2.0);
+                r /= TOutput(ql::Constants<TScale>::_two());
             else {
-                r = TOutput(2.0) / r;
+                r = TOutput(ql::Constants<TScale>::_two()) / r;
                 d = -d;
             }
         }
@@ -1178,24 +1192,24 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION void kfn(Kokkos::Array<TOutput, 3> &res, TScale& ieps, TMass const& xpi, TMass const& xm, TMass const& xmp) {
         
-        if (xm == TMass(0.0) || xmp == TMass(0.0)) {
+        if (xm == TMass(ql::Constants<TMass>::_zero()) || xmp == TMass(ql::Constants<TMass>::_zero())) {
             Kokkos::printf("Error in kfn,xm,xmp");
         }
         const TOutput xx1 = TOutput(xpi - (xm - xmp) * (xm - xmp));
-        const TOutput rat = TOutput(xx1 / (4.0 * xm * xmp));
+        const TOutput rat = TOutput(xx1 / (TMass(ql::Constants<TMass>::_four()) * xm * xmp));
         if (ql::iszero<TOutput, TMass, TScale>(ql::Real(rat))) {
-            res[1] = -TOutput(2.0) * Kokkos::sqrt(rat) * TOutput{0.0, 1.0} + TOutput(2.0) * rat;
-            res[0] = TOutput(1.0) - res[1];
-            res[2] = TOutput(2.0) - res[1];
+            res[1] = -TOutput(ql::Constants<TScale>::_two()) * ql::kSqrt(rat) * TOutput{ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_one()} + TOutput(ql::Constants<TScale>::_two()) * rat;
+            res[0] = TOutput(ql::Constants<TScale>::_one()) - res[1];
+            res[2] = TOutput(ql::Constants<TScale>::_two()) - res[1];
         } 
         else {
-            const TOutput root = Kokkos::sqrt((rat - TOutput(1.0)) / rat);
-            const TOutput invopr = TOutput(1.0)/(TOutput(1.0) + root);
+            const TOutput root = ql::kSqrt((rat - TOutput(ql::Constants<TScale>::_one())) / rat);
+            const TOutput invopr = TOutput(ql::Constants<TScale>::_one())/(TOutput(ql::Constants<TScale>::_one()) + root);
             res[0] = -invopr * invopr / rat;
-            res[1] = TOutput(2.0) * invopr;
-            res[2] = TOutput(2.0) * root * invopr;
+            res[1] = TOutput(ql::Constants<TScale>::_two()) * invopr;
+            res[2] = TOutput(ql::Constants<TScale>::_two()) * root * invopr;
         }
-        ieps = 1.0;
+        ieps = ql::Constants<TScale>::_one();
     }
 
 }

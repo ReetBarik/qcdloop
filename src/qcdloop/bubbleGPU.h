@@ -7,11 +7,10 @@
 #pragma once
 
 #include "kokkosUtils.h"
-#include "kokkosMaths.h"
 
 namespace ql
 {
-    using complex = Kokkos::complex<double>;
+    // complex is defined in kokkosMaths.h
     
     /*!
     * The integral is defined as in the general case but with the first term:
@@ -41,13 +40,13 @@ namespace ql
         const int i) {
 
         // general case from Denner 0709.1075, Eq. (4.23)
-        const TMass sqm0 = Kokkos::sqrt(m0);
-        const TMass sqm1 = Kokkos::sqrt(m1);
+        const TMass sqm0 = ql::kSqrt(m0);
+        const TMass sqm1 = ql::kSqrt(m1);
         const TOutput bb = TOutput(m0 + m1 - s);
-        const TOutput rtt= Kokkos::sqrt(bb * bb - TOutput(4.0) * TOutput(m1 * m0));
+        const TOutput rtt= ql::kSqrt(bb * bb - TOutput(4.0) * TOutput(m1 * m0));
         const TOutput x1 = TOutput(0.5) * (bb + rtt) / (sqm0 * sqm1);
         const TOutput x2 = TOutput(1.0) / x1;
-        res(i,0) = TOutput(2.0) - Kokkos::log(sqm0 * sqm1 / mu2) + (m0 - m1) / s * Kokkos::log(sqm1 / sqm0) - sqm0 * sqm1 / s * (x2 - x1) * ql::cLn<TOutput, TMass, TScale>(x1, ql::Sign(ql::Real(x1 - x2)));
+        res(i,0) = TOutput(2.0) - ql::kLog(sqm0 * sqm1 / mu2) + (m0 - m1) / s * ql::kLog(sqm1 / sqm0) - sqm0 * sqm1 / s * (x2 - x1) * ql::cLn<TOutput, TMass, TScale>(x1, ql::Sign(ql::Real(x1 - x2)));
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);
 
@@ -72,7 +71,7 @@ namespace ql
         const TMass& m, 
         const int i) {
 
-        res(i,0) = TOutput(Kokkos::log(mu2 / m)) + TOutput(2.0);
+        res(i,0) = TOutput(ql::kLog(mu2 / m)) + TOutput(2.0);
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);
 
@@ -97,7 +96,7 @@ namespace ql
         const TMass& m, 
         const int i) {
 
-        res(i,0) = TOutput(Kokkos::log(mu2 / m)) + TOutput(1.0);
+        res(i,0) = TOutput(ql::kLog(mu2 / m)) + TOutput(1.0);
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);
 
@@ -176,8 +175,8 @@ namespace ql
         const TMass& m1, 
         const int i) {
 
-        res(i,0) = TOutput(Kokkos::log(mu2 / m0));
-        if (!ql::iszero<TOutput, TMass, TScale>(Kokkos::abs((m1-m0)/mu2))) { // replaceing !iszero() TODO::revisit for quad
+        res(i,0) = TOutput(ql::kLog(mu2 / m0));
+        if (!ql::iszero<TOutput, TMass, TScale>(ql::kAbs((m1-m0)/mu2))) { // replaceing !iszero() TODO::revisit for quad
             res(i,0) -= ql::fndd<TOutput, TMass, TScale>(0, TOutput(m0 / (m0 - m1)), 1);
         }
         res(i,1) = TOutput(1.0);
@@ -209,9 +208,9 @@ namespace ql
         
         // Normalization
         const TScale scalefac = ql::Max(
-            ql::Max(ql::Max(Kokkos::abs(p(i, 0)), mu2(i)),
-                    Kokkos::abs(m(i, 0))),
-            Kokkos::abs(m(i, 1)));
+            ql::Max(ql::Max(ql::kAbs(p(i, 0)), mu2(i)),
+                    ql::kAbs(m(i, 0))),
+            ql::kAbs(m(i, 1)));
         
         const TMass m0 = (ql::Min(m(i, 0), m(i, 1))) / scalefac;
         const TMass m1 = (ql::Max(m(i, 0), m(i, 1))) / scalefac;
@@ -219,35 +218,35 @@ namespace ql
         const TScale musq = mu2(i) / scalefac;
         
         // Call appropriate BB function based on conditions
-        if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0)) && 
-            ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0)) && 
-            ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1))) {  // All zero result
+        if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(p0)) && 
+            ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m0)) && 
+            ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m1))) {  // All zero result
             res(i, 0) = TOutput(0.0);
             res(i, 1) = TOutput(0.0);
             res(i, 2) = TOutput(0.0);
         }
-        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq)) && 
-                 ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0 / musq)) && 
-                 ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1 / musq))) {
+        else if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(p0 / musq)) && 
+                 ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m0 / musq)) && 
+                 ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m1 / musq))) {
             res(i, 0) = TOutput(0.0);
             res(i, 1) = TOutput(1.0);
             res(i, 2) = TOutput(0.0);
         }
-        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m0 / musq))) {
-            if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs((m1 - p0) / musq))) {
+        else if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m0 / musq))) {
+            if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs((m1 - p0) / musq))) {
                 ql::BB1<TOutput, TMass, TScale>(res, musq, m1, i);  // I(s;0,s) s = m1, DD(4.13)
             }
-            else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq))) {
+            else if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(p0 / musq))) {
                 ql::BB2<TOutput, TMass, TScale>(res, musq, m1, i);  // I(0;0,m2)
             }
-            else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(m1 / musq))) {
+            else if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(m1 / musq))) {
                 ql::BB3<TOutput, TMass, TScale>(res, musq, m1 - TMass(p0), i);  // I(s;0,0)
             }
             else {
                 ql::BB4<TOutput, TMass, TScale>(res, musq, m1, p0, i);  // I(s;0,m2)
             }
         }
-        else if (ql::iszero<TOutput, TMass, TScale>(Kokkos::abs(p0 / musq))) {  // deal with special case, s = 0
+        else if (ql::iszero<TOutput, TMass, TScale>(ql::kAbs(p0 / musq))) {  // deal with special case, s = 0
             ql::BB5<TOutput, TMass, TScale>(res, musq, m0, m1, i);
         }
         else {

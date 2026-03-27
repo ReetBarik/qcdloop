@@ -19,7 +19,7 @@ include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(VERSION 2.1.0)
+set(VERSION 1.0.0)
 
 
 # Set default CXXFLAGS but allow for environment override
@@ -48,27 +48,6 @@ if (${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
   set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address" CACHE STRING "debug linker flags" FORCE)
 endif()
 
-set(prefix ${CMAKE_INSTALL_PREFIX})
-set(exec_prefix ${CMAKE_INSTALL_PREFIX})
-set(includedir ${CMAKE_INSTALL_INCLUDEDIR})
-set(libdir ${CMAKE_INSTALL_LIBDIR})
-
-configure_file(
-  "${PROJECT_SOURCE_DIR}/src/qcdloop/config.h.in"
-  "${PROJECT_SOURCE_DIR}/src/qcdloop/config.h"
-  )
-
-configure_file(
-  "${PROJECT_SOURCE_DIR}/src/qcdloop-config.in"
-  "${PROJECT_BINARY_DIR}/src/qcdloop-config"
-  )
-
-configure_file(
-  "${PROJECT_SOURCE_DIR}/src/qcdloop.pc.in"
-  "${PROJECT_SOURCE_DIR}/src/qcdloop.pc"
-  )
-
-# libqcdloop configuration
 include_directories(src/qcdloop src)
 
 find_package(Kokkos REQUIRED)
@@ -89,3 +68,62 @@ target_compile_options(triangleGPU_test PRIVATE -w)
 add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test PRIVATE -w)
+
+
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+  set(QUADMATH_NAMES ${QUADMATH_NAMES} libquadmath.so quadmath)
+  find_library(QUADMATH_LIBRARY
+    NAMES ${QUADMATH_NAMES}
+    PATHS /usr/lib64/atlas /usr/lib/atlas
+          /usr/lib64 /usr/lib /usr/local/lib64
+          /usr/local/lib /usr/x86_64-linux-gnu/*
+          /usr/lib/gcc/x86_64-linux-gnu/*
+          /usr/lib/gcc/x86_64-redhat-linux/*
+          /usr/lib/gcc/x86_64-pc-linux-gnu/*
+          /soft/compilers/gcc/x86_64-suse-linux/14.1.0/lib64
+          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+  )
+
+  if(QUADMATH_LIBRARY)
+    set(QUADMATH_LIBRARIES ${QUADMATH_LIBRARY})
+    set(QUADMATH_FOUND "YES")
+    message(STATUS "Found QUADMATH: ${QUADMATH_LIBRARIES}")
+  else()
+    set(QUADMATH_FOUND "NO")
+    message(WARNING "Could not find QuadMath library - binary may not compile with quadmath.h")
+  endif()
+ENDIF()
+
+# Individual test executables split from boxGPU_test_quad
+set(BOX_QUAD_TESTS
+  boxGPU_test_quad_BIN0
+  boxGPU_test_quad_BIN1
+  boxGPU_test_quad_BIN2
+  boxGPU_test_quad_BIN3
+  boxGPU_test_quad_BIN4
+  boxGPU_test_quad_B1
+  boxGPU_test_quad_B2
+  boxGPU_test_quad_B3
+  boxGPU_test_quad_B4
+  boxGPU_test_quad_B5
+  boxGPU_test_quad_B6
+  boxGPU_test_quad_B7
+  boxGPU_test_quad_B8
+  boxGPU_test_quad_B9
+  boxGPU_test_quad_B10
+  boxGPU_test_quad_B11
+  boxGPU_test_quad_B12
+  boxGPU_test_quad_B13
+  boxGPU_test_quad_B14
+  boxGPU_test_quad_B15
+  boxGPU_test_quad_B16
+)
+
+foreach(test_target ${BOX_QUAD_TESTS})
+  add_executable(${test_target} examples/box/${test_target}.cc)
+  target_link_libraries(${test_target} PUBLIC Kokkos::kokkos)
+  if(QUADMATH_FOUND)
+    target_link_libraries(${test_target} PUBLIC ${QUADMATH_LIBRARY})
+  endif()
+  target_compile_options(${test_target} PRIVATE -w)
+endforeach()

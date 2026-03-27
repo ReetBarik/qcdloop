@@ -35,7 +35,6 @@
 Makefile
 autom4te.cache/
 bin/Makefile
-bin/qcdloop-config
 config.log
 config.status
 doc/html/
@@ -47,7 +46,6 @@ libtool
 src/.deps/
 src/.libs/
 src/Makefile
-src/qcdloop/config.h
 src/qcdloop/stamp-h1
 examples/cache_test
 examples/cmass_test
@@ -61,4 +59,3 @@ build/
 build_logs/
 include/
 kokkos/
-src/qcdloop.pc

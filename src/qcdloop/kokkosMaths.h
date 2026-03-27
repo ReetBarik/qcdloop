@@ -3,24 +3,29 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
-
+//
+// Double precision version of kokkosMaths
 
 #pragma once
 
 #include <math.h>
+#include <type_traits>
 
 namespace ql
 {
     using complex = Kokkos::complex<double>;
 
-    // template<typename TOutput, typename TMass, typename TScale>
+    template<typename T>
     struct Constants {
 
-        KOKKOS_INLINE_FUNCTION 
-        static constexpr double _C(int i) {
+        // Number of Chebyshev coefficients for ddilog (must match coeffs array in _C)
+        KOKKOS_INLINE_FUNCTION
+        static constexpr int _num_C() { return 19; }
 
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _C(int i) {
+            // Double precision Chebyshev coefficients (19 terms)
             constexpr double coeffs[19] = {
-    
                 0.4299669356081370,
                 0.4097598753307711,
                 -0.0185884366501460,
@@ -40,17 +45,18 @@ namespace ql
                 -0.0000000000000061,
                 0.0000000000000009,
                 -0.0000000000000001
-            
             };
-    
-            return coeffs[i];
+            return T(coeffs[i]);
         }
 
-        KOKKOS_INLINE_FUNCTION 
-        static constexpr double _B(int i) {
+        // Number of Bernoulli coefficients for li2series (must match coeffs array in _B)
+        KOKKOS_INLINE_FUNCTION
+        static constexpr int _num_B() { return 25; }
 
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _B(int i) {
+            // Double precision Bernoulli coefficients (25 terms)
             constexpr double coeffs[25] = {
-    
                 0.02777777777777777777777777777777777777777778774E0,
                 -0.000277777777777777777777777777777777777777777778E0,
                 4.72411186696900982615268329554043839758125472E-6,
@@ -76,43 +82,169 @@ namespace ql
                 8.17820877756210262176477721487283426787618937E-39,
                 -1.987010831152385925564820669234786567541858996E-40,
                 4.83577851804055089628705937311537820769430091E-42
-
             };
-    
-            return coeffs[i];
+            return T(coeffs[i]);
         }
         
         template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _qlonshellcutoff() { return 1e-10; }
-        KOKKOS_INLINE_FUNCTION static double _pi() { return M_PI; }
-        KOKKOS_INLINE_FUNCTION static double _pi2() { return _pi() * _pi(); }
-        template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _pio3() { return _pi() / TScale(3); }
-        template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _pio6() { return _pi() / TScale(6); }
-        template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _pi2o3() { return _pi() * _pio3<TOutput, TMass, TScale>(); }
-        template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _pi2o6() { return _pi() * _pio6<TOutput, TMass, TScale>(); }
-        template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static double _pi2o12() { return _pi2() / TScale(12); }
-        KOKKOS_INLINE_FUNCTION static complex _ipio2() { complex temp(0.0, 0.5 * M_PI); return temp; }
-        KOKKOS_INLINE_FUNCTION static double _eps() { return 1e-6; }
-        KOKKOS_INLINE_FUNCTION static double _eps4() { return 1e-4; }
-        KOKKOS_INLINE_FUNCTION static double _eps7() { return 1e-7; }
-        KOKKOS_INLINE_FUNCTION static double _eps15() { return 1e-15; }
-        KOKKOS_INLINE_FUNCTION static double _eps14() { return 1e-14; }
-        KOKKOS_INLINE_FUNCTION static double _neglig() { return 1e-14; }
-        KOKKOS_INLINE_FUNCTION static double _reps() { return 1e-16; }
+        KOKKOS_INLINE_FUNCTION static T _qlonshellcutoff() {
+            return T(1e-10);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _pi() {
+            return T(M_PI);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _pi2() { 
+            return _pi() * _pi(); 
+        }
 
         template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static TOutput _ieps2() { return TOutput{0.0, _reps() * _reps()}; }
+        KOKKOS_INLINE_FUNCTION static T _pio3() { 
+            return _pi() / TScale(3); 
+        }
 
         template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static TOutput _ieps50() { return TOutput{0.0, 1e-50}; }
+        KOKKOS_INLINE_FUNCTION static T _pio6() { 
+            return _pi() / TScale(6); 
+        }
 
         template<typename TOutput, typename TMass, typename TScale>
-        KOKKOS_INLINE_FUNCTION static TOutput _2ipi() { return TOutput{0.0, 2.0 * M_PI}; }
+        KOKKOS_INLINE_FUNCTION static T _pi2o3() { 
+            return _pi() * _pio3<TOutput, TMass, TScale>(); 
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static T _pi2o6() { 
+            return _pi() * _pio6<TOutput, TMass, TScale>(); 
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static T _pi2o12() { 
+            return _pi2() / TScale(12); 
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _zero() {
+            return T(0.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _half() {
+            return T(0.5);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _one() {
+            return T(1.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _two() {
+            return T(2.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _three() {
+            return T(3.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _four() {
+            return T(4.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _five() {
+            return T(5.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _six() {
+            return T(6.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _ten() {
+            return T(10.0);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps() {
+            return T(1e-6);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps4() {
+            return T(1e-4);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps7() {
+            return T(1e-7);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps10() {
+            return T(1e-10);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps14() {
+            return T(1e-14);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _eps15() {
+            return T(1e-15);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _xloss() {
+            return T(0.125);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _neglig() {
+            return T(1e-14);
+        }
+
+        KOKKOS_INLINE_FUNCTION 
+        static constexpr T _reps() {
+            return T(1e-16);
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _2ipi() {
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_two() * Constants<TScale>::_pi()};
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _ipio2() {
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_pi() * Constants<TScale>::_half()};
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _ipi() {
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_pi()};
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _ieps() {
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_reps()};
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _ieps2() {
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_reps() * Constants<TScale>::_reps()};
+        }
+
+        template<typename TOutput, typename TMass, typename TScale>
+        KOKKOS_INLINE_FUNCTION static TOutput _ieps50() {
+            return TOutput{Constants<TScale>::_zero(), 1e-50};
+        }
     };
 
     template<typename TOutput, typename TMass, typename TScale>
@@ -135,16 +267,53 @@ namespace ql
         return temp;
     }
 
+    // Math dispatch functions
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    T kAbs(T const& x) {
+        return Kokkos::abs(x);
+    }
+
+    // Explicit overloads for double and Kokkos::complex<double>
+    KOKKOS_INLINE_FUNCTION
+    double kAbs(double const& x) {
+        return Kokkos::abs(x);
+    }
+
+    // Overload for Kokkos::complex<double> - Kokkos::abs(complex) returns double, not complex
+    KOKKOS_INLINE_FUNCTION
+    double kAbs(Kokkos::complex<double> const& x) {
+        return Kokkos::abs(x);
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    T kLog(T const& x) {
+        return Kokkos::log(x);
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    T kSqrt(T const& x) {
+        return Kokkos::sqrt(x);
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    T kConj(T const& x) {
+        return Kokkos::conj(x);
+    }
+
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION bool iszero(TScale const& x) {
-        return (Kokkos::abs(x) < ql::Constants::_qlonshellcutoff<TOutput, TMass, TScale>()) ? true : false;
+        return (ql::kAbs(x) < ql::Constants<TScale>::template _qlonshellcutoff<TOutput, TMass, TScale>()) ? true : false;
     }
 
     KOKKOS_INLINE_FUNCTION double Imag(double const& x) {
         return 0.0;
     }
         
-    KOKKOS_INLINE_FUNCTION double Imag(complex const& x) {
+    KOKKOS_INLINE_FUNCTION double Imag(Kokkos::complex<double> const& x) {
         return x.imag();
     }
 
@@ -152,7 +321,7 @@ namespace ql
         return x;   
     }
 
-    KOKKOS_INLINE_FUNCTION double Real(complex const& x) {
+    KOKKOS_INLINE_FUNCTION double Real(Kokkos::complex<double> const& x) {
         return x.real();
     }
 
@@ -160,21 +329,21 @@ namespace ql
         return (double(0) < x) - (x < double(0));
     }
 
-    KOKKOS_INLINE_FUNCTION complex Sign(complex const& x) {
-        return x / Kokkos::abs(x);
+    KOKKOS_INLINE_FUNCTION Kokkos::complex<double> Sign(Kokkos::complex<double> const& x) {
+        return x / ql::kAbs(x);
     }
 
     
     KOKKOS_INLINE_FUNCTION double Max(double const& a, double const& b) {
-        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+        if (ql::kAbs(a) > ql::kAbs(b)) 
             return a;
         else 
             return b;
     }
 
 
-    KOKKOS_INLINE_FUNCTION complex Max(complex const& a, complex const& b) {
-        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+    KOKKOS_INLINE_FUNCTION Kokkos::complex<double> Max(Kokkos::complex<double> const& a, Kokkos::complex<double> const& b) {
+        if (ql::kAbs(a) > ql::kAbs(b)) 
             return a;
         else 
             return b;
@@ -182,15 +351,15 @@ namespace ql
 
     
     KOKKOS_INLINE_FUNCTION double Min(double const& a, double const& b) {
-        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+        if (ql::kAbs(a) > ql::kAbs(b)) 
             return b;
         else 
             return a;
     }
 
 
-    KOKKOS_INLINE_FUNCTION complex Min(complex const& a, complex const& b) {
-        if (Kokkos::abs(a) > Kokkos::abs(b)) 
+    KOKKOS_INLINE_FUNCTION Kokkos::complex<double> Min(Kokkos::complex<double> const& a, Kokkos::complex<double> const& b) {
+        if (ql::kAbs(a) > ql::kAbs(b)) 
             return b;
         else 
             return a;
