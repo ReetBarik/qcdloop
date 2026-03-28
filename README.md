@@ -1,4 +1,4 @@
-![alt text](https://raw.githubusercontent.com/scarrazza/qcdloop/master/extra/logo.png "Logo QCDLoop")
+![alt text](https://raw.githubusercontent.com/scarrazza/qcdloop/master/extra/logo.svg "Logo QCDLoop")
 
 QCDLoop: an object-oriented one-loop scalar Feynman integrals framework
 
@@ -8,7 +8,7 @@ Homepage with library description: https://qcdloop.web.cern.ch
 
 If you use this code in your publication, please cite
 [arXiv:0712.1851](http://arxiv.org/abs/0712.1851) and
-[arXiv:1605.03181](http://arxiv.org/abs/1605.03181).
+[arXiv:1605.03181](http://arxiv.org/abs/1605.03181). 
 
 ## Download
 
