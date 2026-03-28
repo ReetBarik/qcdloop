@@ -1,4 +1,4 @@
-![alt text](https://raw.githubusercontent.com/scarrazza/qcdloop/master/extra/logo.svg "Logo QCDLoop")
+![alt text](https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/logo.svg "Logo QCDLoop")
 
 QCDLoop: an object-oriented one-loop scalar Feynman integrals framework
 
