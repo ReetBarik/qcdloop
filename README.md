@@ -1,4 +1,4 @@
-![Logo QCDLoop](https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/logo.png "Logo QCDLoop") ![Kokkos](https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/kokkos_text.svg "Kokkos")
+![Logo QCDLoop](https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/logo.png "Logo QCDLoop") <img src="https://raw.githubusercontent.com/ReetBarik/qcdloop/master/extra/kokkos_text.svg" alt="Kokkos" width="405" height="85" />
 
 QCDLoop: an object-oriented one-loop scalar Feynman integrals framework
 
