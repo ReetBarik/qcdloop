@@ -30,8 +30,8 @@ mkdir -p $LOGDIR
 
 # Compiler settings (choose one):
 # A) generic GCC
-CC=$(which gcc)
-CXX=$(which g++)
+# CC=$(which gcc)
+# CXX=$(which g++)
 # B) possible alternative on AMD systems:
 # CC=$(which hipcc)
 # CXX=$(which hipcc)
@@ -39,8 +39,8 @@ CXX=$(which g++)
 # CC=$(which cc)
 # CXX=$(which CC)
 # D) possible alternative on Intel systems:
-# CC=$(which icx)
-# CXX=$(which icpx)
+CC=$(which icx)
+CXX=$(which icpx)
 
 
 # MPI Related settings
@@ -68,11 +68,14 @@ KOKKOS_URL=https://github.com/kokkos/kokkos.git
 # A) Enable Serial (CPU only)
 # KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
 # B) Enable CUDA
-KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
+# KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
 # C) Enable HIP
 # KOKKOS_ENABLED=Kokkos_ENABLE_HIP
 # D) Enable OpenMP
 # KOKKOS_ENABLED=Kokkos_ENABLE_OPENMP
+# more available on Kokkos website
+# E) Enable SYCL
+KOKKOS_ENABLED=Kokkos_ENABLE_SYCL
 # more available on Kokkos website
 
 # Enable Architecture (choose one):
@@ -93,9 +96,9 @@ KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
 # H) Mac
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_ARMV80
 # I) Intel PVC
-# KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
+KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
 # J) NVidia GB200 
-KOKKOS_ARCH_FLAG=Kokkos_ARCH_BLACKWELL100
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_BLACKWELL100
 # more available on Kokkos website
 
 # Some need extra flags needed for some software frameworks
@@ -107,8 +110,8 @@ HIP_EXTRA_FLAGS="-DCMAKE_CXX_COMPILER=$CXX \
                  -DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/soft/compilers/gcc/13.3.0/x86_64-suse-linux\""
 # Set this to HIP_EXTRA_FLAGS or CUDA_EXTRA_FLAGS 
 #   or NO_EXTRA_FLAGS depending on your build
-# EXTRA_FLAGS=$NO_EXTRA_FLAGS
-EXTRA_FLAGS=$CUDA_EXTRA_FLAGS
+EXTRA_FLAGS=$NO_EXTRA_FLAGS
+# EXTRA_FLAGS=$CUDA_EXTRA_FLAGS
 # EXTRA_FLAGS=$HIP_EXTRA_FLAGS
 
 
@@ -140,7 +143,7 @@ echo Installing Kokkos ARCH=$KOKKOS_ARCH_FLAG
       -DCMAKE_CXX_STANDARD=17 \
       -D$KOKKOS_ARCH_FLAG=ON \
       -D$KOKKOS_ENABLED=ON \
-      -DCMAKE_CUDA_ARCHITECTURES=100 \
+      # -DCMAKE_CUDA_ARCHITECTURES=100 \
       $EXTRA_FLAGS
    fi
    check_exit_status "kokkos cmake"
