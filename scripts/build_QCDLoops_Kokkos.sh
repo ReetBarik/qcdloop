@@ -66,7 +66,7 @@ KOKKOS_URL=https://github.com/kokkos/kokkos.git
 
 # Enable Sofware Framework (choose one):
 # A) Enable Serial (CPU only)
-# KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
+KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
 # B) Enable CUDA
 # KOKKOS_ENABLED=Kokkos_ENABLE_CUDA
 # C) Enable HIP
@@ -80,7 +80,7 @@ KOKKOS_ENABLED=Kokkos_ENABLE_SYCL
 
 # Enable Architecture (choose one):
 # A) Serial CPU (no specific architecture needed)
-# KOKKOS_ARCH_FLAG=NONE
+KOKKOS_ARCH_FLAG=NONE
 # B) NVidia H100
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_HOPPER90
 # C) NVidia A100
