@@ -6,9 +6,12 @@
 
 #include <Kokkos_Core.hpp>
 #include <cstdio>
+#include <cstdlib>
+#include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <sstream>
 #include "qcdloop/timer.h"
 #include "qcdloop/bubbleGPU.h"
 
@@ -18,15 +21,58 @@ using std::cout;
 using std::endl;
 using complex = Kokkos::complex<double>;
 
+std::string doubleToHex(double x)
+{
+    union {
+        double d;
+        uint64_t u;
+    } conv;
+    conv.d = x;
+    char hex_str[19];
+    std::sprintf(hex_str, "0x%016" PRIx64, conv.u);
+    return std::string(hex_str);
+}
+
+template<typename T>
+std::string arrayToCSV(const T* arr, size_t size) {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < size; ++i) {
+        if (i > 0) ss << ",";
+        ss << arr[i];
+    }
+    ss << "]";
+    return ss.str();
+}
+
+std::string complexToCSV(const complex& c) {
+    std::stringstream ss;
+    ss << "(" << doubleToHex(c.real()) << "," << doubleToHex(c.imag()) << ")";
+    return ss.str();
+}
+
+double r(double min, double max) {
+    return min+std::rand()*1.0/RAND_MAX * (max - min);
+}
+
+double rs(double min, double max) {
+    double r1 = min+std::rand()*1.0/RAND_MAX * (max - min);
+    double rs = std::rand()*1.0/RAND_MAX;
+    if (rs < 0.5)
+        return -r1;
+    else
+        return r1;
+}
+
 
 int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
-        
+
         // Parse command line arguments
         int mode = 1; // default value
         int batch_size = 1000000; // default value
-        
+
         if (argc < 2) {
             std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
             std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
@@ -34,7 +80,7 @@ int main(int argc, char* argv[]) {
             Kokkos::finalize();
             return 1;
         }
-        
+
         // Parse mode (required)
         try {
             mode = std::stoi(argv[1]);
@@ -46,7 +92,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Error: Invalid argument for mode. Using default value of 1." << std::endl;
             mode = 1;
         }
-        
+
         // Parse batch_size (optional)
         if (argc > 2) {
             try {
@@ -60,7 +106,7 @@ int main(int argc, char* argv[]) {
                 batch_size = 1000000;
             }
         }
-        
+
         if (argc > 3) {
             std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
             std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
@@ -77,36 +123,29 @@ int main(int argc, char* argv[]) {
             // Print CSV header for accuracy test mode
             std::cout << "Target Integral,Test ID,mu2,ms,ps,Coeff 1,Coeff 2,Coeff 3" << std::endl;
         }
-        
+
         ql::Timer tt;
-        
+
+        double low = 100;
+        double up  = 1000000;
+
         // Create Kokkos Views for batch processing
         Kokkos::View<double*> mu2_d("mu2", batch_size);
         Kokkos::View<double* [2]> m_d("m", batch_size);
         Kokkos::View<double* [1]> p_d("p", batch_size);
         Kokkos::View<complex* [3]> res_d("res", batch_size);
-        
+
         auto mu2_h = Kokkos::create_mirror_view(mu2_d);
         auto m_h = Kokkos::create_mirror_view(m_d);
         auto p_h = Kokkos::create_mirror_view(p_d);
         auto res_h = Kokkos::create_mirror_view(res_d);
-        
+
         // Initialize mu2
         for (size_t i = 0; i < batch_size; ++i) {
             mu2_h(i) = 91.2*91.2;
         }
-        
+
         Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
-<<<<<<< Updated upstream
-        
-        // TODO: Add test calls here
-        // Example pattern:
-        // 1. Fill host mirrors with test data
-        // 2. Copy to device
-        // 3. Launch parallel_for with timing
-        // 4. Copy results back
-        // 5. Process results for output
-=======
 
         // Trigger BIN0 - BIN2: sweep over number of internal masses
         // BIN0: both masses zero, random s  → BB3: I(s; 0, 0)
@@ -251,9 +290,8 @@ int main(int argc, char* argv[]) {
                           << complexToCSV(res_h(i, 2)) << std::endl;
             }
         }
->>>>>>> Stashed changes
     }
-  
+
     Kokkos::finalize();
     return 0;
 }

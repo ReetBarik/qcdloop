@@ -30,8 +30,8 @@ mkdir -p $LOGDIR
 
 # Compiler settings (choose one):
 # A) generic GCC
-# CC=$(which gcc)
-# CXX=$(which g++)
+CC=$(which gcc)
+CXX=$(which g++)
 # B) possible alternative on AMD systems:
 # CC=$(which hipcc)
 # CXX=$(which hipcc)
@@ -39,8 +39,8 @@ mkdir -p $LOGDIR
 # CC=$(which cc)
 # CXX=$(which CC)
 # D) possible alternative on Intel systems:
-CC=$(which icx)
-CXX=$(which icpx)
+# CC=$(which icx)
+# CXX=$(which icpx)
 
 
 # MPI Related settings
@@ -75,7 +75,7 @@ KOKKOS_ENABLED=Kokkos_ENABLE_SERIAL
 # KOKKOS_ENABLED=Kokkos_ENABLE_OPENMP
 # more available on Kokkos website
 # E) Enable SYCL
-KOKKOS_ENABLED=Kokkos_ENABLE_SYCL
+# KOKKOS_ENABLED=Kokkos_ENABLE_SYCL
 # more available on Kokkos website
 
 # Enable Architecture (choose one):
@@ -96,7 +96,7 @@ KOKKOS_ARCH_FLAG=NONE
 # H) Mac
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_ARMV80
 # I) Intel PVC
-KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
+# KOKKOS_ARCH_FLAG=Kokkos_ARCH_INTEL_PVC
 # J) NVidia GB200 
 # KOKKOS_ARCH_FLAG=Kokkos_ARCH_BLACKWELL100
 # more available on Kokkos website
