@@ -12,8 +12,4 @@ module load cmake/3.28.3
 
 # For Intel
 # module load frameworks
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 module list
