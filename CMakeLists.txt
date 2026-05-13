@@ -69,3 +69,68 @@ add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test PRIVATE -w)
 
+
+# ----------------------------------------------------------------------------
+# DD (double-double) backend — ql::ddfun::ddouble / ddcomplex
+# ----------------------------------------------------------------------------
+# DD math itself does not depend on libquadmath, but the box test drivers use
+# quadmath.h on the host for input generation and ground-truth printing. The
+# device kernels run the DD backend on any Kokkos backend (no sm_100 requirement).
+
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+  set(QUADMATH_NAMES ${QUADMATH_NAMES} libquadmath.so quadmath)
+  find_library(QUADMATH_LIBRARY
+    NAMES ${QUADMATH_NAMES}
+    PATHS /usr/lib64/atlas /usr/lib/atlas
+          /usr/lib64 /usr/lib /usr/local/lib64
+          /usr/local/lib /usr/x86_64-linux-gnu/*
+          /usr/lib/gcc/x86_64-linux-gnu/*
+          /usr/lib/gcc/x86_64-redhat-linux/*
+          /usr/lib/gcc/x86_64-pc-linux-gnu/*
+          /soft/compilers/gcc/x86_64-suse-linux/14.1.0/lib64
+          "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
+  )
+
+  if(QUADMATH_LIBRARY)
+    set(QUADMATH_LIBRARIES ${QUADMATH_LIBRARY})
+    set(QUADMATH_FOUND "YES")
+    message(STATUS "Found QUADMATH: ${QUADMATH_LIBRARIES}")
+  else()
+    set(QUADMATH_FOUND "NO")
+    message(WARNING "Could not find QuadMath library - DD test drivers may not link")
+  endif()
+ENDIF()
+
+# Per-test executables for the DD box backend
+set(BOX_DD_TESTS
+  boxGPU_test_dd_BIN0
+  boxGPU_test_dd_BIN1
+  boxGPU_test_dd_BIN2
+  boxGPU_test_dd_BIN3
+  boxGPU_test_dd_BIN4
+  boxGPU_test_dd_B1
+  boxGPU_test_dd_B2
+  boxGPU_test_dd_B3
+  boxGPU_test_dd_B4
+  boxGPU_test_dd_B5
+  boxGPU_test_dd_B6
+  boxGPU_test_dd_B7
+  boxGPU_test_dd_B8
+  boxGPU_test_dd_B9
+  boxGPU_test_dd_B10
+  boxGPU_test_dd_B11
+  boxGPU_test_dd_B12
+  boxGPU_test_dd_B13
+  boxGPU_test_dd_B14
+  boxGPU_test_dd_B15
+  boxGPU_test_dd_B16
+)
+
+foreach(test_target ${BOX_DD_TESTS})
+  add_executable(${test_target} examples/box/${test_target}.cc)
+  target_link_libraries(${test_target} PUBLIC Kokkos::kokkos)
+  if(QUADMATH_FOUND)
+    target_link_libraries(${test_target} PUBLIC ${QUADMATH_LIBRARY})
+  endif()
+  target_compile_options(${test_target} PRIVATE -w)
+endforeach()
