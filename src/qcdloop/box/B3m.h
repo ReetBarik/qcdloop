@@ -105,16 +105,25 @@ namespace ql
         l4[0] = cc + ql::cLn<TOutput, TMass, TScale>((q12 + q24 * x4[0]) / dd, ql::Real(q24 * ix4[0] / dd));
         l4[1] = cc + ql::cLn<TOutput, TMass, TScale>((q12 + q24 * x4[1]) / dd, ql::Real(q24 * ix4[1] / dd));
 
+        // Hoist ddcomplex sub-expressions into named locals. Inlining them as temporaries
+        // triggers NVCC stack-slot reuse on the DD path that corrupts the values mid-expression
+        // (FP64 / FP128 paths are unaffected). Math-equivalent on all precisions.
+        const TOutput z2_inv_r14 = ql::Constants<TOutput>::_one() / r14;
+        const TOutput z2_k34_k13 = TOutput(k34 / k13);
+        const TOutput z2_inv_r12 = ql::Constants<TOutput>::_one() / r12;
+        const TOutput z2_k23_k13 = TOutput(k23 / k13);
+        const TOutput z2_inv_r24 = ql::Constants<TOutput>::_one() / r24;
+
         res(i, 2) = res(i, 1) = ql::Constants<TOutput>::_zero();
         res(i, 0) = (
             ql::xspence<TOutput, TMass, TScale>(x4, ix4, r14, ir14) +
-            ql::xspence<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r14, -ir14) -
-            ql::xspence<TOutput, TMass, TScale>(x4, ix4, TOutput(k34 / k13), -ql::Real(k13)) -
+            ql::xspence<TOutput, TMass, TScale>(x4, ix4, z2_inv_r14, -ir14) -
+            ql::xspence<TOutput, TMass, TScale>(x4, ix4, z2_k34_k13, -ql::Real(k13)) -
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, r12, ir12) -
-            ql::xspence<TOutput, TMass, TScale>(x1, ix1, ql::Constants<TOutput>::_one() / r12, -ir12) +
-            ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(k23 / k13), -ql::Real(k13)) -
+            ql::xspence<TOutput, TMass, TScale>(x1, ix1, z2_inv_r12, -ir12) +
+            ql::xspence<TOutput, TMass, TScale>(x1, ix1, z2_k23_k13, -ql::Real(k13)) -
             TOutput{ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_two() * ql::Constants<TScale>::_pi()} *
-                ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r24, -ir24, l4)
+                ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, z2_inv_r24, -ir24, l4)
         ) / (TOutput(m3 * m_2) * discr);
     }
 
@@ -174,19 +183,34 @@ namespace ql
                     *(cln_cx2_iep2 - cln_cx3_iep3);
             }
         } else {
-            fac = TOutput(-ql::Constants<TMass>::_one() / (m2 * m4 * tabar)) * cxs[0] / (ql::Constants<TOutput>::_one() - cxs[0] * cxs[0]);
+            const TOutput one = ql::Constants<TOutput>::_one();
+            fac = TOutput(-ql::Constants<TMass>::_one() / (m2 * m4 * tabar)) * cxs[0] / (one - cxs[0] * cxs[0]);
             const TOutput xlog = ql::cLn<TOutput, TMass, TScale>(xs, ieps);
             const TOutput cln_cx2_iep2 = ql::cLn<TOutput, TMass, TScale>(cx2[0], iep2);
             const TOutput cln_cx3_iep3 = ql::cLn<TOutput, TMass, TScale>(cx3[0], iep3);
+            // See [[feedback_dd_temporary_aliasing]] note in BIN3 above.
+            const TOutput inv_cx2 = one / cx2[0];
+            const TOutput inv_cx3 = one / cx3[0];
+
+            // Each of the seven res(i,0) contributions is hoisted into a named
+            // const TOutput before the final sum. Math-equivalent to the
+            // original single-expression formula, but on the DD path NVCC's
+            // stack-slot reuse for multi-word returns produces materially
+            // different (~9 digits worse) results when the cLi2omx3/cLn calls
+            // are sub-expressions of one big additive expression. A/B/C
+            // diagnostic confirmed: see [[feedback_dd_temporary_aliasing]].
+            const TOutput term_lnrat   = -ql::Constants<TOutput>::_two() * xlog * ql::Lnrat<TOutput, TMass, TScale>(mean, tabar);
+            const TOutput term_cln_sq  = cln_cx2_iep2 * cln_cx2_iep2 + cln_cx3_iep3 * cln_cx3_iep3;
+            const TOutput term_li2omx2 = -ql::cLi2omx2<TOutput, TMass, TScale>(xs, xs, ieps, ieps);
+            const TOutput term_li2_pp  = ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], cx2[0],  cx3[0],  ieps,  iep2,  iep3);
+            const TOutput term_li2_mm  = ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], inv_cx2, inv_cx3, ieps, -iep2, -iep3);
+            const TOutput term_li2_pm  = ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], cx2[0],  inv_cx3, ieps,  iep2, -iep3);
+            const TOutput term_li2_mp  = ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], inv_cx2, cx3[0],  ieps, -iep2,  iep3);
+
             res(i,2) = ql::Constants<TOutput>::_zero();
             res(i,1) = -xlog;
-            res(i,0) = -ql::Constants<TOutput>::_two() * xlog * ql::Lnrat<TOutput, TMass, TScale>(mean, tabar)
-                + cln_cx2_iep2 * cln_cx2_iep2 + cln_cx3_iep3 * cln_cx3_iep3
-                - ql::cLi2omx2<TOutput, TMass, TScale>(xs, xs, ieps, ieps)
-                + ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], cx2[0], cx3[0], ieps, iep2, iep3)
-                + ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], ql::Constants<TOutput>::_one() / cx2[0], ql::Constants<TOutput>::_one() / cx3[0], ieps, -iep2, -iep3)
-                + ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], cx2[0], ql::Constants<TOutput>::_one() / cx3[0], ieps, iep2, -iep3)
-                + ql::cLi2omx3<TOutput, TMass, TScale>(cxs[0], ql::Constants<TOutput>::_one() / cx2[0], cx3[0], ieps, -iep2, iep3);            
+            res(i,0) = term_lnrat + term_cln_sq + term_li2omx2
+                     + term_li2_pp + term_li2_mm + term_li2_pm + term_li2_mp;
         }
 
         for (size_t j = 0; j < 3; j++)

@@ -152,20 +152,24 @@ namespace ql
 
         res(i,0) = ql::Constants<TOutput>::_zero();
         for (int j = 0; j < 4; j++) {
-            const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] }; 
+            const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] };
             const Kokkos::Array<TScale, 2> ix_in = { ix[0][j], ix[1][j] };
+            // Hoist 1/rij[j] — see [[feedback-dd-temporary-aliasing]] note in BIN3.
+            const TOutput inv_rij_j = ql::Constants<TOutput>::_one() / rij[j];
             res(i,0) += ql::kPow<TOutput, TMass, TScale>(-ql::Constants<TOutput>::_one() ,j+1) * (
                     ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j]) +
-                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j])
+                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, inv_rij_j, -irij[j])
                     );
         }
 
         const TScale gamma = ql::Sign(ql::Real(a*(x[1][3] - x[0][3])) + ql::Constants<TScale>::_reps());
+        // Hoist 1/r24 — used at lines below in eta/xetatilde/xeta calls.
+        const TOutput inv_r24 = ql::Constants<TOutput>::_one() / r24;
         TOutput l[2][4];
         for (int i = 0; i < 2; i++)
             for (int j = 0; j < 4; j++)
                 l[i][j] = ql::Constants<TOutput>::_zero();
-        l[0][3] = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(ql::eta<TOutput, TMass, TScale>(r13, ir13, ql::Constants<TOutput>::_one() / r24, -ir24, ir1324));
+        l[0][3] = ql::Constants<TScale>::template _2ipi<TOutput, TMass, TScale>() * TOutput(ql::eta<TOutput, TMass, TScale>(r13, ir13, inv_r24, -ir24, ir1324));
         l[1][3] = l[0][3];
 
         TOutput etas = ql::Constants<TOutput>::_zero();
@@ -207,13 +211,16 @@ namespace ql
             const Kokkos::Array<TOutput, 2> l_in_d = {l[0][3], l[1][3]};
 
             etas = ql::xetatilde<TOutput, TMass, TScale>(x_in, ix_in, r13, ir13, l_in_a) +
-                ql::xetatilde<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / r24, -ir24, l_in_b) -
+                ql::xetatilde<TOutput, TMass, TScale>(x_in, ix_in, inv_r24, -ir24, l_in_b) -
                 ql::xetatilde<TOutput, TMass, TScale>(x_in, ix_in, r13 / r24, ir1324, l_in_c) +
                 ql::xetatilde<TOutput, TMass, TScale>(x_in, ix_in, -r13 / r24, -ir1324, l_in_d);
         } else {
             for (int j = 0; j < 3; j++) {
-                l[0][j] = ql::kLog(-x[0][j]) + ql::cLn<TOutput, TMass, TScale>(TOutput(kij[j]) - ql::Constants<TOutput>::_one() / x[0][j]-x[0][j], -ql::Real(x[0][j] * b * TOutput(gamma)));
-                l[1][j] = ql::kLog(-x[1][j]) + ql::cLn<TOutput, TMass, TScale>(TOutput(kij[j]) - ql::Constants<TOutput>::_one() / x[1][j]-x[1][j], -ql::Real(x[1][j] * b * TOutput(gamma)));
+                // Hoist 1/x[0][j], 1/x[1][j] — see [[feedback-dd-temporary-aliasing]] note in BIN3.
+                const TOutput inv_x0_j = ql::Constants<TOutput>::_one() / x[0][j];
+                const TOutput inv_x1_j = ql::Constants<TOutput>::_one() / x[1][j];
+                l[0][j] = ql::kLog(-x[0][j]) + ql::cLn<TOutput, TMass, TScale>(TOutput(kij[j]) - inv_x0_j - x[0][j], -ql::Real(x[0][j] * b * TOutput(gamma)));
+                l[1][j] = ql::kLog(-x[1][j]) + ql::cLn<TOutput, TMass, TScale>(TOutput(kij[j]) - inv_x1_j - x[1][j], -ql::Real(x[1][j] * b * TOutput(gamma)));
             }
 
             const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]}; 
@@ -224,7 +231,7 @@ namespace ql
             const Kokkos::Array<TOutput, 2> l_in_d = {l[0][3], l[1][3]};
 
             etas = ql::xeta<TOutput, TMass, TScale>(x_in, ix_in, r13, ir13, ix[0][2], l_in_a) +
-                ql::xeta<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / r24, -ir24, ix[0][0], l_in_b) -
+                ql::xeta<TOutput, TMass, TScale>(x_in, ix_in, inv_r24, -ir24, ix[0][0], l_in_b) -
                 ql::xeta<TOutput, TMass, TScale>(x_in, ix_in, r13 / r24, ir1324, ix[0][1], l_in_c) +
                 ql::xeta<TOutput, TMass, TScale>(x_in, ix_in, -r13 / r24, -ir1324, ix[0][3], l_in_d) *
                 (ql::Constants<TOutput>::_one() - TOutput(ql::Sign(ql::Real(b)) * gamma));

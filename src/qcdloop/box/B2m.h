@@ -81,9 +81,11 @@ namespace ql
             x4[0] = c / (TOutput(a) * x4[1]); 
 
         const Kokkos::Array<TScale, 2> imzero = {ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_zero()};
+        // Hoist 1/r14 to a named local — see [[feedback-dd-temporary-aliasing]] note in BIN3.
+        const TOutput inv_r14 = ql::Constants<TOutput>::_one() / r14;
         res(i, 0) = (
             ql::xspence<TOutput, TMass, TScale>(x4, imzero, r14, ql::Constants<TScale>::_zero()) +
-            ql::xspence<TOutput, TMass, TScale>(x4, imzero, ql::Constants<TOutput>::_one() / r14, ql::Constants<TScale>::_zero()) -
+            ql::xspence<TOutput, TMass, TScale>(x4, imzero, inv_r14, ql::Constants<TScale>::_zero()) -
             ql::xspence<TOutput, TMass, TScale>(x4, imzero, k34c, ql::Constants<TScale>::_zero()) -
             ql::xspence<TOutput, TMass, TScale>(x4, imzero, k24c, ql::Constants<TScale>::_zero()) +
             (ql::kLog(x4[1]) - ql::kLog(x4[0])) * (ql::kLog(k12c) + ql::kLog(k13c) - ql::kLog(k23c))
@@ -441,13 +443,15 @@ namespace ql
             TOutput cyi = TOutput(yi);
             fac = xs / (ql::Constants<TOutput>::_one() - xs * xs) / TOutput(-m2 * m4 * ta);
             const TOutput xlog = ql::cLn<TOutput, TMass, TScale>(xs, ieps);
+            // Hoist 1/xs — see [[feedback-dd-temporary-aliasing]] note in BIN3.
+            const TOutput inv_xs = ql::Constants<TOutput>::_one() / xs;
             res(i,2) = ql::Constants<TOutput>::_zero();
             res(i,1) = -xlog;
             res(i,0) = xlog * (-xlog - TOutput(ql::kLog(mu2 / m4sq))
                 -ql::Constants<TOutput>::_two() * ql::Lnrat<TOutput, TMass, TScale>(m4sqbar, ta))
                 -ql::cLi2omx2<TOutput, TMass, TScale>(xs, xs, ieps, ieps)
                 +ql::cLi2omx2<TOutput, TMass, TScale>(xs, cyi, ieps, iepyi)
-                -ql::cLi2omx2<TOutput, TMass, TScale>(ql::Constants<TOutput>::_one() / xs, cyi, -ieps, iepyi);
+                -ql::cLi2omx2<TOutput, TMass, TScale>(inv_xs, cyi, -ieps, iepyi);
 
             for (size_t j = 0; j < 3; j++)
                 res(i,j) *= TOutput(fac);
@@ -460,13 +464,15 @@ namespace ql
             TOutput cyy = TOutput(yy);
             fac = xs / (ql::Constants<TOutput>::_one() - xs * xs) / TOutput(-m2 * m4 * ta);
             const TOutput xlog = ql::cLn<TOutput, TMass, TScale>(xs, ieps);
+            // Hoist 1/xs — see [[feedback-dd-temporary-aliasing]] note in BIN3.
+            const TOutput inv_xs = ql::Constants<TOutput>::_one() / xs;
             res(i,2) = ql::Constants<TOutput>::_zero();
             res(i,1) = -xlog;
             res(i,0) = xlog * (-xlog - TOutput(ql::kLog(mu2 / m2sq))
                       -ql::Constants<TOutput>::_two() * ql::Lnrat<TOutput, TMass, TScale>(m2sqbar, ta))
                 -ql::cLi2omx2<TOutput, TMass, TScale>(xs, xs, ieps, ieps)
                 +ql::cLi2omx2<TOutput, TMass, TScale>(xs, cyy, ieps, iepsyy)
-                -ql::cLi2omx2<TOutput, TMass, TScale>(ql::Constants<TOutput>::_one() / xs, cyy, -ieps, iepsyy);
+                -ql::cLi2omx2<TOutput, TMass, TScale>(inv_xs, cyy, -ieps, iepsyy);
 
             for (size_t j = 0; j < 3; j++)
                 res(i,j) *= TOutput(fac);

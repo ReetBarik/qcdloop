@@ -79,6 +79,36 @@ cd scripts
 python3 test.py outputLabels.txt validate.txt 
 ```
 
+## Extended precision (double-double)
+
+The `ddfun_enabled` branch adds a portable double-double (DD) backend that delivers ~30-31 decimal digits per number on any Kokkos backend (CUDA / HIP / SYCL / OpenMP / Serial), without requiring NVIDIA's `__nv_fp128` and Blackwell hardware. To enable it, define `USE_DD_COMPLEX` before including the qcdloop headers in your driver:
+
+```cpp
+#define USE_DD_COMPLEX
+#include "qcdloop/dd_math.hpp"
+#include "qcdloop/dd_complex.hpp"
+```
+
+The 21 DD test drivers in `examples/box/boxGPU_test_dd_{B1..B16,BIN0..BIN4}.cc` show the standard pattern, including a `q_to_dd()` helper that losslessly captures `__float128` host inputs into DD `(hi, lo)` pairs.
+
+### Accuracy status (box integrals)
+
+DD outputs were compared against FP128 reference values across 100k random phase-space points per integral:
+
+- **B1..B14, BIN0..BIN3**: bit-identical to FP128 (33 digits cap = full FP128 precision).
+- **B15, B16, BIN4**: ≥99,999 of 100k points bit-identical to FP128. Each has 1 surviving outlier at ~14-16 digit agreement, located at on-shell threshold kinematics (e.g. external momentum² = internal mass²) where the underlying Denner / Beenakker formulas suffer formula-level cancellations of ~2-8 orders of magnitude. These are precision floors, not implementation bugs — confirmed by an A/B/C diagnostic that re-orders the additive sums and checks bit-stability.
+
+DD validation has only been performed for box integrals. The tadpole / bubble / triangle topologies are expected to behave similarly (boxes have the deepest cancellations), but val files have not been generated against FP128.
+
+### NVCC codegen note
+
+When porting DD code to new kernels, watch for two patterns that NVCC's scheduler can mis-compile via stack-slot reuse on multi-word return values:
+
+1. **`const TOutput&` argument aliasing**: passing a freshly-computed `ddcomplex` sub-expression (e.g. `1 / xs`) directly as a `const&` argument to a function taking another `ddcomplex` can corrupt one of the operands mid-call. Hoist the sub-expression into a named `const TOutput` local first.
+2. **Additive sum-of-results**: writing `res = f(a) + f(b) + f(c) + ...` where each `f(...)` returns a `ddcomplex` can cause NVCC to overlap the return slots and corrupt earlier terms. Hoist each call into a `const TOutput term_X = f(...)` and sum the named locals.
+
+Both patterns are pure source-level refactoring — math-equivalent on all precisions. The g++ host compiler and NVCC's `double` / `quad_complex` paths produce bit-identical machine code with or without the hoist; only the DD path under NVCC sees a behavior change (and the change is an improvement). See `BIN3` and `B16` in `src/qcdloop/box/B3m.h` for concrete examples.
+
 ## Contact Information
 
 Maintainer: 
