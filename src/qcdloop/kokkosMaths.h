@@ -249,22 +249,24 @@ namespace ql
 
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput kPow(TOutput const& base, int const& exponent) {
+        const int n = exponent < 0 ? -exponent : exponent;
         TOutput temp = TOutput(1.0);
 
-        for (int i = 0; i < exponent; i++)
+        for (int i = 0; i < n; i++)
             temp *= base;
 
-        return temp;
+        return exponent < 0 ? TOutput(1.0) / temp : temp;
     }
 
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TMass kPow(TMass const& base, int const& exponent) {
+        const int n = exponent < 0 ? -exponent : exponent;
         TMass temp = TMass(1.0);
 
-        for (int i = 0; i < exponent; i++)
+        for (int i = 0; i < n; i++)
             temp *= base;
 
-        return temp;
+        return exponent < 0 ? TMass(1.0) / temp : temp;
     }
 
     // Math dispatch functions
