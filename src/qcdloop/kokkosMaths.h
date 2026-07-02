@@ -243,7 +243,7 @@ namespace ql
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _ieps50() {
-            return TOutput{Constants<TScale>::_zero(), 1e-50};
+            return TOutput{Constants<TScale>::_zero(), TScale(1e-50)};
         }
     };
 
