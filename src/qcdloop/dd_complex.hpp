@@ -108,7 +108,13 @@ KOKKOS_INLINE_FUNCTION ddcomplex operator/(double b, ddcomplex z) { return ddoub
 // ============================================================
 
 KOKKOS_INLINE_FUNCTION ddouble abs(ddcomplex z) {
-    return sqrt(ddadd(ddmul(z.re, z.re), ddmul(z.im, z.im)));
+    // Hypot-style scaled magnitude: overflow-safe vs naive sqrt(re^2+im^2)
+    // (re^2+im^2 can exceed the double-double range at large components).
+    ddouble ax = abs(z.re); ddouble ay = abs(z.im);
+    ddouble mx = (ax.hi >= ay.hi) ? ax : ay;
+    if (mx.hi == 0.0) return ddouble(0.0);
+    ddouble rx = dddiv(ax, mx); ddouble ry = dddiv(ay, mx);
+    return ddmul(mx, sqrt(ddadd(ddmul(rx, rx), ddmul(ry, ry))));
 }
 KOKKOS_INLINE_FUNCTION ddcomplex conj(ddcomplex z) {
     return ddcomplex(z.re, ddneg(z.im));
@@ -119,7 +125,7 @@ KOKKOS_INLINE_FUNCTION ddcomplex conj(ddcomplex z) {
 // ============================================================
 KOKKOS_INLINE_FUNCTION ddcomplex sqrt(ddcomplex z) {
     if (z.re.hi == 0.0 && z.im.hi == 0.0) return ddcomplex();
-    ddouble r  = sqrt(ddadd(ddmul(z.re, z.re), ddmul(z.im, z.im)));
+    ddouble r  = abs(z);   // hypot-style magnitude (mirrors ff_complex.hpp @45197be)
     ddouble a1 = abs(z.re);
     ddouble s2 = ddmuld(ddadd(r, a1), 0.5);
     ddouble s0 = sqrt(s2);
