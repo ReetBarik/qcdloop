@@ -739,7 +739,10 @@ namespace ql
             res(i,0) = res(i,1) * wlog1 + ro2 / p1;
         }
         else {
-            res(i,1) = (wlog1 - wlog2) / TOutput(p1 - p2);
+            // wlog1-wlog2 cancels when p1 ~ p2; for same-sign p it is exactly log1p(r)
+            const TOutput dw = (p1 * p2 > ql::Constants<TScale>::_zero())
+                             ? TOutput(ql::kLog1p(r)) : (wlog1 - wlog2);
+            res(i,1) = dw / TOutput(p1 - p2);
             res(i,0) = TOutput(0.5) * res(i,1) * (wlog1 + wlog2);
         }
 
@@ -777,7 +780,7 @@ namespace ql
         const TOutput wlog2  = ql::Lnrat<TOutput, TMass, TScale>(m2sqb,m);
         const TOutput wlog3  = ql::Lnrat<TOutput, TMass, TScale>(m3sqb,m);
         const TOutput wlogm  = ql::Lnrat<TOutput, TMass, TScale>(mu2,m);
-        const TMass r = (m3sqb - m2sqb) / m2sqb;
+        const TMass r = TMass(p2 - p3) / m2sqb;
     
         res(i,2) = TOutput(0.0);    
         if (ql::kAbs(r) < ql::Constants<TScale>::_eps()) {        
@@ -788,8 +791,28 @@ namespace ql
         }
         else {        
             const TOutput fac = TOutput(1.0) / (p2 - p3);
-            res(i,1) = fac * (wlog3 - wlog2);
-            res(i,0) = res(i,1) * wlogm + fac * (dilog2 - dilog3 + (wlog2 * wlog2 - wlog3 * wlog3));
+            // same quantity two ways: log1p when r is small, Lnrat when 1+r would cancel
+            const TOutput dw = (ql::kAbs(r) < TMass(0.5)) ? TOutput(ql::kLog1p(r))
+                             : ql::Lnrat<TOutput, TMass, TScale>(m3sqb, m2sqb);
+            // dilog2-dilog3 through the differenced ddilog, mirroring Li2omrat's own branching
+            const TMass arg2 = TMass(p2) / m, arg3 = TMass(p3) / m, darg = TMass(p2 - p3) / m;
+            TOutput dd = dilog2 - dilog3;
+            bool ok = false;
+            if (ql::kAbs(dd) < TScale(0.5) * ql::Max(ql::kAbs(dilog2), ql::kAbs(dilog3))) {
+            if (arg2 <= TMass(1) && arg3 <= TMass(1)) {
+                const TMass v = ql::ddilogdiff<TOutput, TMass, TScale>(arg2, arg3, darg, ok);
+                if (ok) dd = TOutput(v);
+            } else if (arg2 > TMass(1) && arg3 > TMass(1)) {
+                const TMass v = ql::ddilogdiff<TOutput, TMass, TScale>(m2sqb / m, m3sqb / m, -darg, ok);
+                if (ok) {
+                    const TMass A2 = ql::kLog(arg2), A3 = ql::kLog(arg3), dA = ql::kLog1p(darg / arg3);
+                    dd = TOutput(-v) - (TOutput(TMass(0.5) * (A2 + A3)) * (-dw)
+                                      + TOutput(TMass(0.5) * dA) * (wlog2 + wlog3));
+                }
+            }
+            }
+            res(i,1) = fac * dw;
+            res(i,0) = res(i,1) * wlogm + fac * (dd - dw * (wlog2 + wlog3));
         }
 
     }

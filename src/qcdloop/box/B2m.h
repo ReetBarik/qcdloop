@@ -121,10 +121,9 @@ namespace ql
             x43mm1 = m4sq;
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq + m3sq - m4sq, 2) - ql::Constants<TMass>::_four() * m3sq * p3sq));
-            const TOutput ga43p   = TOutput(+p3sq + m3sq - m4sq) + root;
-            const TOutput ga43pm1 = TOutput(-p3sq + m3sq - m4sq) + root;
-            const TOutput ga43m   = TOutput(+p3sq + m3sq - m4sq) - root;
-            const TOutput ga43mm1 = TOutput(-p3sq + m3sq - m4sq) - root;
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
+            const TOutput ga43p = g43[0], ga43m = g43[1], ga43pm1 = g43m1[0], ga43mm1 = g43m1[1];
 
             x43p = -ql::Real(ga43p);
             x43pm1 = -ql::Real(ga43pm1);
@@ -202,10 +201,9 @@ namespace ql
             x43mm1 = m4sq;
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq + m3sq - m4sq, 2) - ql::Constants<TMass>::_four() * m3sq * p3sq));
-            const TOutput ga43p   = TOutput(+p3sq + m3sq - m4sq) + root;
-            const TOutput ga43pm1 = TOutput(-p3sq + m3sq - m4sq) + root;
-            const TOutput ga43m   = TOutput(+p3sq + m3sq - m4sq) - root;
-            const TOutput ga43mm1 = TOutput(-p3sq + m3sq - m4sq) - root;
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
+            const TOutput ga43p = g43[0], ga43m = g43[1], ga43pm1 = g43m1[0], ga43mm1 = g43m1[1];
 
             x43p = -ql::Real(ga43p);
             x43pm1 = -ql::Real(ga43pm1);
@@ -296,15 +294,12 @@ namespace ql
             x43mm1 = -ql::Constants<TMass>::_one();
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq-m3sq+m4sq, 2) - ql::Constants<TMass>::_four() * m4sq * p3sq));
-            ga34p   = TOutput(+p3sq + m4sq - m3sq) + root;
-            ga34pm1 = TOutput(-p3sq + m4sq - m3sq) + root;
-            ga34m   = TOutput(+p3sq + m4sq - m3sq) - root;
-            ga34mm1 = TOutput(-p3sq + m4sq - m3sq) - root;
-
-            ga43p   = TOutput(+p3sq + m3sq - m4sq) + root;
-            ga43pm1 = TOutput(-p3sq + m3sq - m4sq) + root;
-            ga43m   = TOutput(+p3sq + m3sq - m4sq) - root;
-            ga43mm1 = TOutput(-p3sq + m3sq - m4sq) - root;
+            const auto g34   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m4sq - m3sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
+            const auto g34m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m4sq - m3sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
+            ga34p = g34[0]; ga34m = g34[1]; ga34pm1 = g34m1[0]; ga34mm1 = g34m1[1];
+            ga43p = g43[0]; ga43m = g43[1]; ga43pm1 = g43m1[0]; ga43mm1 = g43m1[1];
 
             x34p = -ql::Real(ga34p);
             x34pm1 = -ql::Real(ga34pm1);
@@ -583,7 +578,7 @@ namespace ql
         const bool zY01 = ql::iszero<TOutput, TMass, TScale>(Y[0][1]);
         const bool zY03 = ql::iszero<TOutput, TMass, TScale>(Y[0][3]);
         const bool zY12 = ql::iszero<TOutput, TMass, TScale>(Y[1][2]);
-        const bool zY23 = ql::iszero<TOutput, TMass, TScale>(Y[1][2]);
+        const bool zY23 = ql::iszero<TOutput, TMass, TScale>(Y[2][3]);
 
         if (zY00 && zY22 && zY01 && zY03 && zY12 && zY23) 
             ql::B14<TOutput, TMass, TScale>(res, Y, mu2, i); 

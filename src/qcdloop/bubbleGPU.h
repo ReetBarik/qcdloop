@@ -44,8 +44,11 @@ namespace ql
         const TMass sqm1 = ql::kSqrt(m1);
         const TOutput bb = TOutput(m0 + m1 - s);
         const TOutput rtt= ql::kSqrt(bb * bb - TOutput(4.0) * TOutput(m1 * m0));
-        const TOutput x1 = TOutput(0.5) * (bb + rtt) / (sqm0 * sqm1);
-        const TOutput x2 = TOutput(1.0) / x1;
+        // add same-signed terms to dodge cancellation; the partner follows from x1*x2 = 1
+        const bool bpos = ql::Real(bb) >= ql::Constants<TScale>::_zero();
+        const TOutput xb = TOutput(0.5) * (bpos ? bb + rtt : bb - rtt) / (sqm0 * sqm1);
+        const TOutput x1 = bpos ? xb : TOutput(1.0) / xb;
+        const TOutput x2 = bpos ? TOutput(1.0) / xb : xb;
         res(i,0) = TOutput(2.0) - ql::kLog(sqm0 * sqm1 / mu2) + (m0 - m1) / s * ql::kLog(sqm1 / sqm0) - sqm0 * sqm1 / s * (x2 - x1) * ql::cLn<TOutput, TMass, TScale>(x1, ql::Sign(ql::Real(x1 - x2)));
         res(i,1) = TOutput(1.0);
         res(i,2) = TOutput(0.0);
