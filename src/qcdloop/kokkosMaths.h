@@ -296,6 +296,20 @@ namespace ql
 
     template<typename T>
     KOKKOS_INLINE_FUNCTION
+    T kLog1p(T const& x) {
+        return Kokkos::log1p(x);
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::complex<T> kLog1p(Kokkos::complex<T> const& z) {
+        // |1+z|^2 = 1 + 2*Re z + |z|^2, formed without cancellation
+        return Kokkos::complex<T>(T(0.5) * Kokkos::log1p(T(2) * z.real() + (z.real() * z.real() + z.imag() * z.imag())),
+                                  Kokkos::atan2(z.imag(), T(1) + z.real()));
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
     T kSqrt(T const& x) {
         return Kokkos::sqrt(x);
     }

@@ -150,13 +150,21 @@ namespace ql
         ix[0][2] = ix[0][3] * ql::Real(x[0][2]) * s1;
         ix[1][2] = ix[1][3] * ql::Real(x[1][2]) * s2;
 
+        // the only two z1*z2 families that reach 1: x[k][3]/(r12*r24) and x[k][3]*(r13*r34)
+        const Kokkos::Array<TOutput, 2> x3 = { x[0][3], x[1][3] };
+        const TOutput rho = r12 * r24, sig = r13 * r34;
+        const Kokkos::Array<TOutput, 2> omA = ql::omzpair<TOutput, TMass, TScale>(x3, ql::Constants<TOutput>::_one() / rho,
+            (r13*r13*r12*r12 - TOutput(k23)*r13*r12 + ql::Constants<TOutput>::_one()) * (r24*r24*r12*r12 - TOutput(k14)*r24*r12 + ql::Constants<TOutput>::_one()) / (a*rho*rho*r13*r12));
+        const Kokkos::Array<TOutput, 2> omB = ql::omzpair<TOutput, TMass, TScale>(x3, sig,
+            (r13*r13*r34*r34 - TOutput(k14)*r13*r34 + ql::Constants<TOutput>::_one()) * (r24*r24*r34*r34 - TOutput(k23)*r24*r34 + ql::Constants<TOutput>::_one()) / (a*r24*r34));
+
         res(i,0) = ql::Constants<TOutput>::_zero();
         for (int j = 0; j < 4; j++) {
             const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] }; 
             const Kokkos::Array<TScale, 2> ix_in = { ix[0][j], ix[1][j] };
             res(i,0) += ql::kPow<TOutput, TMass, TScale>(-ql::Constants<TOutput>::_one() ,j+1) * (
-                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j]) +
-                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j])
+                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j], j == 2 ? omB.data() : nullptr) +
+                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j], j == 0 ? omA.data() : nullptr)
                     );
         }
 
@@ -177,13 +185,30 @@ namespace ql
             const TOutput q13 = TOutput(k13) - ql::Constants<TOutput>::_two() * r13;
             const TOutput q24 = TOutput(k24) - ql::Constants<TOutput>::_two() * r24;
 
+            // (r12 - q24*x0)(r12 - q24*x1) = N/a  and  (r34 - q13/x0)(r34 - q13/x1) = Np/c
+            const TScale g = ql::Constants<TScale>::_xloss() * ql::Constants<TScale>::_xloss();
+            const TOutput N = -d * (r24 * r12 * (TOutput(k12) * r24 - TOutput(k14)) +
+                ql::kPow<TOutput, TMass, TScale>(ql::Constants<TOutput>::_one() - r24 * r24, 2)) / (r24 * r24);
+            const TOutput Np = -d * (r13 * r34 * (TOutput(k34) * r13 - TOutput(k14)) +
+                ql::kPow<TOutput, TMass, TScale>(ql::Constants<TOutput>::_one() - r13 * r13, 2)) / (r13 * r13);
+            TOutput D[2] = { r12 - q24 * x[0][3], r12 - q24 * x[1][3] };
+            TOutput G[2] = { r34 - q13 / x[0][3], r34 - q13 / x[1][3] };
+            if (ql::kAbs(D[0]) < g * ql::Max(ql::kAbs(r12), ql::kAbs(q24 * x[0][3])) && D[1] != TOutput(ql::Constants<TScale>::_zero()))
+                D[0] = (N / a) / D[1];
+            else if (ql::kAbs(D[1]) < g * ql::Max(ql::kAbs(r12), ql::kAbs(q24 * x[1][3])) && D[0] != TOutput(ql::Constants<TScale>::_zero()))
+                D[1] = (N / a) / D[0];
+            if (ql::kAbs(G[0]) < g * ql::Max(ql::kAbs(r34), ql::kAbs(q13 / x[0][3])) && G[1] != TOutput(ql::Constants<TScale>::_zero()))
+                G[0] = (Np / c) / G[1];
+            else if (ql::kAbs(G[1]) < g * ql::Max(ql::kAbs(r34), ql::kAbs(q13 / x[1][3])) && G[0] != TOutput(ql::Constants<TScale>::_zero()))
+                G[1] = (Np / c) / G[0];
+
             TScale cc = gamma * ql::Sign(ql::Imag(r24) + ir24);
             l[0][0] = ql::cLn<TOutput, TMass, TScale>(-x[0][0], -ix[0][0]) +
                 ql::cLn<TOutput, TMass, TScale>(r14 - q13/x[0][0], -ql::Constants<TScale>::_one()) +
-                ql::cLn<TOutput, TMass, TScale>((r12 - q24 * x[0][3])/d, cc);
+                ql::cLn<TOutput, TMass, TScale>(D[0]/d, cc);
             l[1][0] = ql::cLn<TOutput, TMass, TScale>(-x[1][0], -ix[1][0]) +
                 ql::cLn<TOutput, TMass, TScale>(r14 - q13/x[1][0], -ql::Constants<TScale>::_one()) +
-                ql::cLn<TOutput, TMass, TScale>((r12 - q24 * x[1][3])/d, -cc);
+                ql::cLn<TOutput, TMass, TScale>(D[1]/d, -cc);
 
             cc = gamma * ql::Sign(ql::Real(r13) * (ql::Imag(r24) + ir24));
             l[0][1] = ql::cLn<TOutput, TMass, TScale>(-x[0][1], -ix[0][1]) +
@@ -193,10 +218,10 @@ namespace ql
                 ql::cLn<TOutput, TMass, TScale>(r14 - q13 / x[1][0], -ql::Constants<TScale>::_one()) +
                 ql::cLn<TOutput, TMass, TScale>((r23 - q24 * x[1][2]) / d, -cc);
             l[0][2] = ql::cLn<TOutput, TMass, TScale>(-x[0][2], -ix[0][2]) +
-                ql::cLn<TOutput, TMass, TScale>(r34 - q13 / x[0][3], -ql::Constants<TScale>::_one()) +
+                ql::cLn<TOutput, TMass, TScale>(G[0], -ql::Constants<TScale>::_one()) +
                 ql::cLn<TOutput, TMass, TScale>((r23 - q24 * x[0][2]) / d, cc);
             l[1][2] = ql::cLn<TOutput, TMass, TScale>(-x[1][2], -ix[1][2]) +
-                ql::cLn<TOutput, TMass, TScale>(r34 - q13 / x[1][3], -ql::Constants<TScale>::_one()) +
+                ql::cLn<TOutput, TMass, TScale>(G[1], -ql::Constants<TScale>::_one()) +
                 ql::cLn<TOutput, TMass, TScale>((r23 - q24 * x[1][2]) / d, -cc);
 
             const Kokkos::Array<TOutput, 2> x_in = {x[0][3], x[1][3]}; 
