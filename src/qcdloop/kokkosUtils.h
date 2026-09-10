@@ -1113,7 +1113,7 @@ namespace ql
 
         TOutput zz = y0 * (a * y0 + b);
 
-        if (ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_reps() * ql::Constants<TScale>::_reps() <= ql::kAbs(ql::Imag(zz)) * ql::Constants<TScale>::_neglig() && ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
+        if (ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
             zz = (TOutput(ql::Real(zz)) + c) / a;
         else
             zz = (zz + c) / a;
@@ -1163,7 +1163,7 @@ namespace ql
 
         TOutput zz = y0 * (a * y0 + b);
 
-        if (ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_reps() * ql::Constants<TScale>::_reps() <= ql::kAbs(ql::Imag(zz)) * ql::Constants<TScale>::_neglig() && ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
+        if (ql::kAbs(ql::Imag(zz)) <= ql::kAbs(ql::Real(zz)) * ql::Constants<TScale>::_neglig())
             zz = (TOutput(ql::Real(zz)) + c) / a;
         else
             zz = (zz + c) / a;
