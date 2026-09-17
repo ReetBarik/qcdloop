@@ -573,7 +573,33 @@ namespace ql
     TOutput TIN3(const Kokkos::Array<TMass, 6>& xpi, const Kokkos::Array<TMass, 6>& sxpi, const int &massive) {
         TOutput res; 
         const bool realm = ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi[0])) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi[1])) && ql::iszero<TOutput, TMass, TScale>(ql::Imag(xpi[2]));
-        if (realm) {
+        const TOutput K2 = ql::Kallen2<TOutput, TMass, TScale>(xpi[3], xpi[4], xpi[5]);
+        if (!realm && massive == 2)
+            ql::TINDNS2<TOutput, TMass, TScale>(res, sxpi);
+        else if (!realm && massive == 1)
+            ql::TINDNS1<TOutput, TMass, TScale>(res, sxpi);
+        else if (ql::Real(K2) < 0.0 && massive > 0) {
+            const TOutput p[3] = {TOutput(xpi[3]), TOutput(xpi[4]), TOutput(xpi[5])};
+            TOutput m[3] = {TOutput(xpi[0]), TOutput(xpi[1]), TOutput(xpi[2])};
+
+            for (int j = 0; j < 3; j++) {
+                const TScale mag = ql::kAbs(ql::Real(m[j]));
+                m[j] -= ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>()
+                        * TOutput(mag > ql::Constants<TScale>::_zero() ? mag : ql::Constants<TScale>::_one());
+            }
+
+            const TOutput alpha = ql::kSqrt(K2) + ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
+            const TOutput sm0 = ql::kSqrt(m[0]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
+            const TOutput sm1 = ql::kSqrt(m[1]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
+            const TOutput sm2 = ql::kSqrt(m[2]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
+
+            res = -(ql::R3int<TOutput, TMass, TScale>(p[0], sm0, sm1, m[1] - m[2] + p[1], p[2] - p[0] - p[1], p[1], alpha)
+                  - ql::R3int<TOutput, TMass, TScale>(p[2], sm0, sm2, -(m[0] - m[1]) + p[2] - p[1], p[1] - p[0] - p[2], p[0], alpha)
+                  + ql::R3int<TOutput, TMass, TScale>(p[1], sm1, sm2, -(m[0] - m[1]) + p[2] - p[1], p[0] + p[1] - p[2], p[0], alpha));
+
+            res /= alpha;
+        }
+        else if (realm) {
             
             TOutput Del2[3], y[3];
             Kokkos::Array<TOutput, 2> z;
@@ -610,36 +636,8 @@ namespace ql
 
             res = -res / (TOutput(2.0) * Del2[0]);
         }
-        else if (massive == 2)
-            ql::TINDNS2<TOutput, TMass, TScale>(res, sxpi);
-        else if (massive == 1)
-            ql::TINDNS1<TOutput, TMass, TScale>(res, sxpi);
-        else {
-            const TOutput K2 = ql::Kallen2<TOutput, TMass, TScale>(xpi[3], xpi[4], xpi[5]);
-            if (ql::Real(K2) < 0.0) {
-                const TOutput p[3] = {TOutput(xpi[3]), TOutput(xpi[4]), TOutput(xpi[5])};
-                TOutput m[3] = {TOutput(xpi[0]), TOutput(xpi[1]), TOutput(xpi[2])};
-
-                for (int j = 0; j < 3; j++) {
-                    const TScale mag = ql::kAbs(ql::Real(m[j]));
-                    m[j] -= ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>()
-                            * TOutput(mag > ql::Constants<TScale>::_zero() ? mag : ql::Constants<TScale>::_one());
-                }
-
-                const TOutput alpha = ql::kSqrt(K2) + ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
-                const TOutput sm0 = ql::kSqrt(m[0]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
-                const TOutput sm1 = ql::kSqrt(m[1]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
-                const TOutput sm2 = ql::kSqrt(m[2]) - ql::Constants<TScale>::template _ieps2<TOutput, TMass, TScale>();
-
-                res = -(ql::R3int<TOutput, TMass, TScale>(p[0], sm0, sm1, m[1] - m[2] + p[1], p[2] - p[0] - p[1], p[1], alpha)
-                      - ql::R3int<TOutput, TMass, TScale>(p[2], sm0, sm2, -(m[0] - m[1]) + p[2] - p[1], p[1] - p[0] - p[2], p[0], alpha)
-                      + ql::R3int<TOutput, TMass, TScale>(p[1], sm1, sm2, -(m[0] - m[1]) + p[2] - p[1], p[0] + p[1] - p[2], p[0], alpha));
-
-                res /= alpha;
-            }
-            else
-                ql::TINDNS<TOutput, TMass, TScale>(res, xpi);
-        }
+        else
+            ql::TINDNS<TOutput, TMass, TScale>(res, xpi);
         return res;
     }    
 
