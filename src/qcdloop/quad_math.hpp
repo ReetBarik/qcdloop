@@ -422,6 +422,15 @@ fp128_t log(fp128_t x) {
 }
 
 KOKKOS_INLINE_FUNCTION
+fp128_t log1p(fp128_t x) {
+#ifdef __CUDA_ARCH__
+    return fp128_t(__nv_fp128_log1p(x.value));
+#else
+    return fp128_t(0.0q);  // Device-only function
+#endif
+}
+
+KOKKOS_INLINE_FUNCTION
 fp128_t neg(fp128_t x) {
     return -x;  // Uses fp128_wrapper::operator- (unary)
 }

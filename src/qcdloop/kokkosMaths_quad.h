@@ -316,6 +316,12 @@ namespace ql
 
     template<typename T>
     KOKKOS_INLINE_FUNCTION
+    T kLog1p(T const& x) {
+        return Kokkos::log1p(x);
+    }
+
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
     T kSqrt(T const& x) {
         return Kokkos::sqrt(x);
     }
@@ -335,6 +341,12 @@ namespace ql
 
     template<>
     KOKKOS_INLINE_FUNCTION
+    fp128_t kLog1p(fp128_t const& x) {
+        return ql::quad::log1p(x);
+    }
+
+    template<>
+    KOKKOS_INLINE_FUNCTION
     fp128_t kSqrt(fp128_t const& x) {
         return ql::quad::sqrt(x);
     }
@@ -348,6 +360,15 @@ namespace ql
     KOKKOS_INLINE_FUNCTION
     quad_complex kLog(quad_complex const& z) {
         return ql::quad::log(z);
+    }
+
+    // |1+z|^2 = 1 + 2*Re z + |z|^2, formed without cancellation
+    KOKKOS_INLINE_FUNCTION
+    quad_complex kLog1p(quad_complex const& z) {
+        const fp128_t re = z.real();
+        const fp128_t im = z.imag();
+        return quad_complex(fp128_t(0.5q) * ql::quad::log1p(fp128_t(2.0q) * re + (re * re + im * im)),
+                            ql::quad::atan2(im, fp128_t(1.0q) + re));
     }
 
     KOKKOS_INLINE_FUNCTION
