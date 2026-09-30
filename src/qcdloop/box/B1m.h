@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 //
 // Box integrals with 1 internal mass.
 // Contains: BIN1, B6, B7, B8, B9, B10, B1m dispatcher, pruned BO.

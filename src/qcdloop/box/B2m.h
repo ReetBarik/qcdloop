@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 //
 // Box integrals with 2 internal masses.
 // Contains: BIN2, B11, B12, B13, B14, B15, B2ma, B2mo, B2m dispatcher, pruned BO.
