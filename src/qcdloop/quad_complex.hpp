@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 //
 // Minimal Quad Complex Type
 // Do NOT use Kokkos::complex<fp128_t> - implement minimal custom type instead

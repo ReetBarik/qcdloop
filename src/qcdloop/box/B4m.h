@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 //
 // Box integrals with 4 internal masses.
 // Contains: BIN4, B4m dispatcher, pruned BO.

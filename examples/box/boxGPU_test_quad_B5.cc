@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 
 // Define USE_QUAD_COMPLEX before including headers to use quad_complex instead of Kokkos::complex<double>
 #define USE_QUAD_COMPLEX

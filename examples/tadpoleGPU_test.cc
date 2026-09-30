@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 
 #include <Kokkos_Core.hpp>
 #include <cstdio>

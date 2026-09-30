@@ -83,4 +83,6 @@ python3 test.py outputLabels.txt validate.txt
 
 Maintainer: 
 - Reet Barik (rbarik@anl.gov), 
-- Taylor Childers (jchilders@anl.gov)
+- Taylor Childers (jchilders@anl.gov),
+- Stefan Hoeche (shoeche@fnal.gov),
+- Max Knobbe (mknobbe@fnal.gov)

@@ -3,6 +3,8 @@
 //
 // Authors: Reet Barik      : rbarik@anl.gov
 //          Taylor Childers : jchilders@anl.gov
+//          Stefan Hoeche   : shoeche@fnal.gov
+//          Max Knobbe      : mknobbe@fnal.gov
 //
 // CUDA Quad Precision Math Wrapper Layer
 // Isolates all CUDA quad precision functionality
