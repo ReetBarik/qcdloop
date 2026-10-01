@@ -9,31 +9,19 @@
 #include <Kokkos_Core.hpp>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <sstream>
 #include "qcdloop/timer.h"
 #include "qcdloop/triangleGPU.h"
+#include "dd_quad_inputs.h"
 
 using std::vector;
 using std::cout;
 using std::endl;
 using std::string;
 using complex = Kokkos::complex<double>;
-
-std::string doubleToHex(double x)
-{
-    union {
-        double d;
-        uint64_t u;
-    } conv;
-    conv.d = x;
-    char hex_str[19];
-    std::sprintf(hex_str, "0x%016" PRIx64, conv.u);
-    return std::string(hex_str);
-}
 
 template<typename T>
 std::string arrayToCSV(const T* arr, size_t size) {
@@ -49,21 +37,20 @@ std::string arrayToCSV(const T* arr, size_t size) {
 
 std::string complexToCSV(const complex& c) {
     std::stringstream ss;
-    ss << "(" << doubleToHex(c.real()) << "," << doubleToHex(c.imag()) << ")";
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.16e", c.real());
+    ss << "(" << buf << ",";
+    std::snprintf(buf, sizeof(buf), "%.16e", c.imag());
+    ss << buf << ")";
     return ss.str();
 }
 
 double r(double min, double max) {
-    return min+std::rand()*1.0/RAND_MAX * (max - min);
+    return dd_rand(min, max).hi;
 }
 
 double rs(double min, double max) {
-    double r1 = min+std::rand()*1.0/RAND_MAX * (max - min);
-    double rs = std::rand()*1.0/RAND_MAX;
-    if (rs < 0.5)
-        return -r1;
-    else
-        return r1;
+    return dd_rands(min, max).hi;
 }
 
 
@@ -144,15 +131,15 @@ int main(int argc, char* argv[]) {
 
         // Initialize mu2
         for (size_t i = 0; i < batch_size; ++i) {
-            mu2_h(i) = 91.2*91.2;
+            mu2_h(i) = dd_mu2().hi;
         }
 
         Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
 
         // Mass values used across test cases
-        double m2  = 10;
-        double m12 = 4.9*4.9;
-        double m32 = 50.*50.;
+        double m2  = dd_mass_10().hi;
+        double m12 = dd_mass_4p9_sq().hi;
+        double m32 = dd_mass_50_sq().hi;
 
         // Trigger TIN0 - TIN3: sweep over number of internal masses
         // With all-random nonzero p (|p| >= 100), Y01 >= 1e-4 >> iszero threshold,

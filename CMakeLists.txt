@@ -69,3 +69,51 @@ add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test PRIVATE -w)
 
+# quadmath.h is host-only. Kokkos sends every C++ source of a Kokkos target
+# through nvcc_wrapper or hipcc, so this file is compiled by an explicit host
+# g++ invocation and linked in as a finished object.
+if(DEFINED ENV{DD_HOST_CXX} AND NOT "$ENV{DD_HOST_CXX}" STREQUAL "")
+  set(_dd_host_cxx "$ENV{DD_HOST_CXX}")
+else()
+  set(_dd_host_cxx "${CMAKE_CXX_COMPILER}")
+  if(_dd_host_cxx MATCHES "hipcc|nvcc")
+    execute_process(
+      COMMAND which g++
+      OUTPUT_VARIABLE _dd_host_cxx
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+  endif()
+endif()
+set(DD_QUAD_INPUTS_OBJ "${CMAKE_CURRENT_BINARY_DIR}/dd_quad_inputs.o")
+add_custom_command(
+  OUTPUT "${DD_QUAD_INPUTS_OBJ}"
+  COMMAND "${_dd_host_cxx}" -c
+          "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
+          -O2 -fext-numeric-literals
+          -o "${DD_QUAD_INPUTS_OBJ}"
+  DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.h"
+  COMMENT "Compiling quad inputs with host g++"
+  VERBATIM
+)
+set_source_files_properties("${DD_QUAD_INPUTS_OBJ}" PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+  target_sources(${tgt} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
+endforeach()
+find_library(QUADMATH_LIBRARY
+  NAMES libquadmath.so quadmath
+  PATHS /soft/compilers/gcc/13.3.0/x86_64-suse-linux/lib64
+  NO_DEFAULT_PATH
+)
+if(NOT QUADMATH_LIBRARY)
+  set(QUADMATH_LIBRARY quadmath)
+endif()
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+  target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
+endforeach()
+

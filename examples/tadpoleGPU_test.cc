@@ -9,30 +9,18 @@
 #include <Kokkos_Core.hpp>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <sstream>
 #include "qcdloop/timer.h"
 #include "qcdloop/tadpoleGPU.h"
+#include "dd_quad_inputs.h"
 
 using std::vector;
 using std::cout;
 using std::endl;
 using complex = Kokkos::complex<double>;
-
-std::string doubleToHex(double x)
-{
-    union {
-        double d;
-        uint64_t u;
-    } conv;
-    conv.d = x;
-    char hex_str[19];
-    std::sprintf(hex_str, "0x%016" PRIx64, conv.u);
-    return std::string(hex_str);
-}
 
 template<typename T>
 std::string arrayToCSV(const T* arr, size_t size) {
@@ -48,8 +36,16 @@ std::string arrayToCSV(const T* arr, size_t size) {
 
 std::string complexToCSV(const complex& c) {
     std::stringstream ss;
-    ss << "(" << doubleToHex(c.real()) << "," << doubleToHex(c.imag()) << ")";
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.16e", c.real());
+    ss << "(" << buf << ",";
+    std::snprintf(buf, sizeof(buf), "%.16e", c.imag());
+    ss << buf << ")";
     return ss.str();
+}
+
+double r(double min, double max) {
+    return dd_rand(min, max).hi;
 }
 
 
@@ -127,7 +123,7 @@ int main(int argc, char* argv[]) {
 
       // Initialize mu2
       for (size_t i = 0; i < batch_size; ++i) {
-          mu2_h(i) = 91.2*91.2;
+          mu2_h(i) = dd_mu2().hi;
       }
 
       Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
@@ -162,7 +158,7 @@ int main(int argc, char* argv[]) {
       // Randomize m per element so each batch element exercises a different mass value.
       std::srand(12345);
       for (size_t i(0); i<batch_size; ++i) {
-          m_h(i, 0) = 100 + std::rand()*1.0/RAND_MAX * (1000000 - 100);  // random positive mass
+          m_h(i, 0) = r(100, 1000000);
       }
       Kokkos::deep_copy(mu2_d, mu2_h);
       Kokkos::deep_copy(m_d, m_h);
