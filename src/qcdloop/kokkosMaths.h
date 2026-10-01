@@ -240,22 +240,12 @@ namespace ql
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _ieps2() {
-            const TScale reps = Constants<TScale>::_reps();
-            TScale eps = reps * reps;
-            // Float-word types cannot hold reps^2 (1e-40, 1e-54). A zero
-            // regulator drops the cut. 1e-35 is the smallest stand-in that
-            // is still a normal float32 and below the working precision.
-            if (eps == TScale(0.0) && reps != TScale(0.0))
-                eps = TScale(1.0e-35);
-            return TOutput{Constants<TScale>::_zero(), eps};
+            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_reps() * Constants<TScale>::_reps()};
         }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _ieps50() {
-            TScale eps(1e-50);
-            if (eps == TScale(0.0))
-                eps = TScale(1.0e-35);
-            return TOutput{Constants<TScale>::_zero(), eps};
+            return TOutput{Constants<TScale>::_zero(), TScale(1e-50)};
         }
     };
 
@@ -406,6 +396,29 @@ namespace ql
 
     KOKKOS_INLINE_FUNCTION double Htheta(double const& x) { 
         return 0.5 * (1 + ql::Sign(x)); 
+    }
+
+    // Sign passed to cLn and eta. The formula is ix3 * xr * s.
+    // A nonzero product is returned unchanged, including on double.
+    // If both root imaginaries flushed to 0, they become Sign(d_real)
+    // and -Sign(d_real) before that product is formed. If the product
+    // flushed but both factors are nonzero, the sign of the product is
+    // returned. Callers only read the sign.
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION
+    T kept_sign(T& ix0, T& ix1, T const& d_real, int which, T const& xr, T const& s) {
+        if (ix0 == T(0.0) && ix1 == T(0.0)) {
+            const T sig = ql::from_int<T>(ql::SignInt(d_real));
+            ix0 = sig;
+            ix1 = T(0.0) - sig;
+        }
+        T ix3 = ix1;
+        if (which == 0)
+            ix3 = ix0;
+        const T prod = ix3 * xr * s;
+        if (prod != T(0.0) || ix3 == T(0.0) || xr == T(0.0))
+            return prod;
+        return ql::from_int<T>(ql::SignInt(ix3)) * ql::from_int<T>(ql::SignInt(xr)) * s;
     }
 
 }

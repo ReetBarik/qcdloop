@@ -328,3 +328,55 @@
     xp_real Constants<xp_real>::_reps() { return xp_real(1e-20); }
 
 #endif
+
+// Float-word regulators. 1e-50 and reps^2 underflow a float32 word on
+// TripleFloat and QuadFloat, and 1e-50 underflows FloatFloat. DoubleDouble
+// holds both, so it keeps the primary one-liners. 1e-35 is a normal float32.
+#if defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput xp_ieps2() {
+        const TScale reps = Constants<TScale>::_reps();
+        TScale eps = reps * reps;
+        if (eps == TScale(0.0) && reps != TScale(0.0))
+            eps = TScale(1.0e-35);
+        return TOutput{Constants<TScale>::_zero(), eps};
+    }
+
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput xp_ieps50() {
+        TScale eps(1e-50);
+        if (eps == TScale(0.0))
+            eps = TScale(1.0e-35);
+        return TOutput{Constants<TScale>::_zero(), eps};
+    }
+
+    template<>
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput Constants<xp_real>::_ieps2() {
+        return xp_ieps2<TOutput, TMass, TScale>();
+    }
+
+    template<>
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput Constants<xp_complex>::_ieps2() {
+        return xp_ieps2<TOutput, TMass, TScale>();
+    }
+
+    template<>
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput Constants<xp_real>::_ieps50() {
+        return xp_ieps50<TOutput, TMass, TScale>();
+    }
+
+    template<>
+    template<typename TOutput, typename TMass, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TOutput Constants<xp_complex>::_ieps50() {
+        return xp_ieps50<TOutput, TMass, TScale>();
+    }
+#endif

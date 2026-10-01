@@ -114,6 +114,9 @@ set_source_files_properties("${DD_QUAD_INPUTS_OBJ}" PROPERTIES
 foreach(be dd ff qf tf)
   target_sources(boxGPU_test_${be} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
 endforeach()
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+  target_sources(${tgt} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
+endforeach()
 find_library(QUADMATH_LIBRARY
   NAMES libquadmath.so quadmath
   PATHS /soft/compilers/gcc/13.3.0/x86_64-suse-linux/lib64
@@ -124,5 +127,8 @@ if(NOT QUADMATH_LIBRARY)
 endif()
 foreach(be dd ff qf tf)
   target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
+endforeach()
+foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
+  target_link_libraries(${tgt} PUBLIC "${QUADMATH_LIBRARY}")
 endforeach()
 
