@@ -164,10 +164,17 @@ namespace ql
         for (int j = 0; j < 4; j++) {
             const Kokkos::Array<TOutput, 2> x_in = { x[0][j], x[1][j] }; 
             const Kokkos::Array<TScale, 2> ix_in = { ix[0][j], ix[1][j] };
-            res(i,0) += ql::kPow<TOutput, TMass, TScale>(-ql::Constants<TOutput>::_one() ,j+1) * (
-                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j], j == 2 ? omB.data() : nullptr) +
-                    ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j], j == 0 ? omA.data() : nullptr)
-                    );
+            // gfx90a rejects `cond ? ptr : nullptr` as S_CSELECT_B32 from a VGPR.
+            TOutput sp_b, sp_a;
+            if (j == 2)
+                sp_b = ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j], omB.data());
+            else
+                sp_b = ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, rij[j], irij[j], nullptr);
+            if (j == 0)
+                sp_a = ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j], omA.data());
+            else
+                sp_a = ql::xspence<TOutput, TMass, TScale>(x_in, ix_in, ql::Constants<TOutput>::_one() / rij[j], -irij[j], nullptr);
+            res(i,0) += ql::kPow<TOutput, TMass, TScale>(-ql::Constants<TOutput>::_one() ,j+1) * (sp_b + sp_a);
         }
 
         const TScale gamma = ql::Sign(ql::Real(a*(x[1][3] - x[0][3])) + ql::Constants<TScale>::_reps());
@@ -179,7 +186,7 @@ namespace ql
         l[1][3] = l[0][3];
 
         TOutput etas = ql::Constants<TOutput>::_zero();
-        if (ql::Imag(r13) == 0) {
+        if (ql::Imag(r13) == ql::Constants<TMass>::_zero()) {
             r12 = TOutput(k12) - r24 * TOutput(k14);
             r23 = TOutput(k23) - r24 * TOutput(k34);
             r34 = TOutput(k34) - r13 * TOutput(k14);

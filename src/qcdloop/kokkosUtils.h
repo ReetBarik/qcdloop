@@ -86,11 +86,11 @@ namespace ql
     // which of ddilog's six reduction branches T falls in
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION int ddbranch(TMass const& T) {
-        if (ql::Real(T) <= TMass(-2)) return 0;
-        if (ql::Real(T) < TMass(-1)) return 1;
+        if (ql::Real(T) <= TMass(-2.0)) return 0;
+        if (ql::Real(T) < TMass(-1.0)) return 1;
         if (ql::Real(T) <= TMass(-0.5)) return 2;
-        if (ql::Real(T) < TMass(0)) return 3;
-        if (ql::Real(T) <= TMass(1)) return 4;
+        if (ql::Real(T) < TMass(0.0)) return 3;
+        if (ql::Real(T) <= TMass(1.0)) return 4;
         return 5;
     }
 
@@ -100,11 +100,11 @@ namespace ql
     // Sets ok=false when the two arguments fall in different reduction branches.
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TMass ddilogdiff(TMass const& x2, TMass const& x3, TMass const& dx, bool& ok) {
-        const TMass one = TMass(1), half = TMass(0.5), pi2o6 = TMass(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>());
+        const TMass one = TMass(1.0), half = TMass(0.5), pi2o6 = TMass(ql::Constants<TScale>::template _pi2o6<TOutput, TMass, TScale>());
         const TMass T2 = -x2, T3 = -x3, dT = -dx;
         const int b2 = ql::ddbranch<TOutput, TMass, TScale>(T2);
         ok = (b2 == ql::ddbranch<TOutput, TMass, TScale>(T3));
-        if (!ok) return TMass(0);
+        if (!ok) return TMass(0.0);
 
         TMass Y2, Y3, S, dY, dA;
         // logs and their differences, formed with log1p so the small factor stays relative
@@ -138,7 +138,7 @@ namespace ql
             dA = half * dn * (n2 + n3);
             break; }
         case 4: {
-            Y2 = T2; Y3 = T3; S = one; dY = dT; dA = TMass(0);
+            Y2 = T2; Y3 = T3; S = one; dY = dT; dA = TMass(0.0);
             break; }
         default: {
             Y2 = one / T2; Y3 = one / T3; S = -one;
@@ -150,8 +150,8 @@ namespace ql
 
         const TMass H2 = Y2 + Y2 - one, H3 = Y3 + Y3 - one, dH = dY + dY;
         const TMass ALFA2 = H2 + H2, ALFA3 = H3 + H3, dALFA = dH + dH;
-        TMass B1 = TMass(0), B2 = TMass(0), B0 = TMass(0);
-        TMass dB1 = TMass(0), dB2 = TMass(0), dB0 = TMass(0);
+        TMass B1 = TMass(0.0), B2 = TMass(0.0), B0 = TMass(0.0);
+        TMass dB1 = TMass(0.0), dB2 = TMass(0.0), dB0 = TMass(0.0);
         for (int i = ql::Constants<TScale>::_num_C() - 1; i >= 0; --i) {
             dB0 = ALFA2 * dB1 + dALFA * B1 - dB2;          // uses B1 of the x3 recurrence
             B0 = ql::Constants<TScale>::_C(i) + ALFA3 * B1 - B2;
@@ -711,7 +711,10 @@ namespace ql
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION TOutput xspence(const Kokkos::Array<TOutput, 2>& z1, const Kokkos::Array<TScale, 2>& im1, TOutput const& z2, TScale const& im2, TOutput const* omz12 = nullptr) { 
         
-        return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2, omz12 ? omz12 + 1 : nullptr) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2, omz12);
+        // Same gfx90a restriction as B4m: do not select a pointer against nullptr.
+        if (omz12)
+            return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2, omz12 + 1) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2, omz12);
+        return ql::cspence<TOutput, TMass, TScale>(z1[1], im1[1], z2, im2, nullptr) - ql::cspence<TOutput, TMass, TScale>(z1[0], im1[0], z2, im2, nullptr);
 
     }
     

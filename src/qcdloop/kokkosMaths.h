@@ -22,10 +22,10 @@ namespace ql
 
         // Number of Chebyshev coefficients for ddilog (must match coeffs array in _C)
         KOKKOS_INLINE_FUNCTION
-        static constexpr int _num_C() { return 19; }
+        static int _num_C() { return 19; }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _C(int i) {
+        static T _C(int i) {
             // Double precision Chebyshev coefficients (19 terms)
             constexpr double coeffs[19] = {
                 0.4299669356081370,
@@ -56,7 +56,7 @@ namespace ql
         static constexpr int _num_B() { return 25; }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _B(int i) {
+        static T _B(int i) {
             // Double precision Bernoulli coefficients (25 terms)
             constexpr double coeffs[25] = {
                 0.02777777777777777777777777777777777777777778774E0,
@@ -94,23 +94,23 @@ namespace ql
         }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _pi() {
+        static T _pi() {
             return T(M_PI);
         }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _pi2() { 
+        static T _pi2() { 
             return _pi() * _pi(); 
         }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static T _pio3() { 
-            return _pi() / TScale(3); 
+            return _pi() / TScale(3.0); 
         }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static T _pio6() { 
-            return _pi() / TScale(6); 
+            return _pi() / TScale(6.0); 
         }
 
         template<typename TOutput, typename TMass, typename TScale>
@@ -125,7 +125,7 @@ namespace ql
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static T _pi2o12() { 
-            return _pi2() / TScale(12); 
+            return _pi2() / TScale(12.0); 
         }
 
         KOKKOS_INLINE_FUNCTION 
@@ -174,7 +174,7 @@ namespace ql
         }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _eps() {
+        static T _eps() {
             return T(1e-6);
         }
 
@@ -209,12 +209,12 @@ namespace ql
         }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _neglig() {
+        static T _neglig() {
             return T(1e-14);
         }
 
         KOKKOS_INLINE_FUNCTION 
-        static constexpr T _reps() {
+        static T _reps() {
             return T(1e-16);
         }
 
@@ -240,12 +240,22 @@ namespace ql
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _ieps2() {
-            return TOutput{Constants<TScale>::_zero(), Constants<TScale>::_reps() * Constants<TScale>::_reps()};
+            const TScale reps = Constants<TScale>::_reps();
+            TScale eps = reps * reps;
+            // Float-word types cannot hold reps^2 (1e-40, 1e-54). A zero
+            // regulator drops the cut. 1e-35 is the smallest stand-in that
+            // is still a normal float32 and below the working precision.
+            if (eps == TScale(0.0) && reps != TScale(0.0))
+                eps = TScale(1.0e-35);
+            return TOutput{Constants<TScale>::_zero(), eps};
         }
 
         template<typename TOutput, typename TMass, typename TScale>
         KOKKOS_INLINE_FUNCTION static TOutput _ieps50() {
-            return TOutput{Constants<TScale>::_zero(), TScale(1e-50)};
+            TScale eps(1e-50);
+            if (eps == TScale(0.0))
+                eps = TScale(1.0e-35);
+            return TOutput{Constants<TScale>::_zero(), eps};
         }
     };
 
@@ -343,8 +353,19 @@ namespace ql
         return x.real();
     }
 
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION int SignInt(T const& x) {
+        return (T(0.0) < x) - (x < T(0.0));
+    }
+
+    // int -> T via double, so FloatFloat/QuadFloat/TripleFloat are not ambiguous.
+    template<typename T>
+    KOKKOS_INLINE_FUNCTION T from_int(int n) {
+        return T(static_cast<double>(n));
+    }
+
     KOKKOS_INLINE_FUNCTION int Sign(double const& x) {
-        return (double(0) < x) - (x < double(0));
+        return SignInt(x);
     }
 
     KOKKOS_INLINE_FUNCTION Kokkos::complex<double> Sign(Kokkos::complex<double> const& x) {

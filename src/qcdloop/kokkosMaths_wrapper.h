@@ -11,7 +11,9 @@
 
 #pragma once
 
-#ifdef USE_QUAD_COMPLEX
+#if defined(XPMATH_BACKEND_dd) || defined(XPMATH_BACKEND_ff) || defined(XPMATH_BACKEND_qf) || defined(XPMATH_BACKEND_tf)
+#include "kokkosMaths_xp.h"
+#elif defined(USE_QUAD_COMPLEX)
 #ifdef KOKKOS_ENABLE_CUDA
 #include "kokkosMaths_quad.h"
 #else

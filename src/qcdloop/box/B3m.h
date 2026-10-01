@@ -67,9 +67,9 @@ namespace ql
         const TOutput r12 = ql::Constants<TOutput>::_half() * (TOutput(k12) + TOutput(ql::Sign(ql::Real(k12))) * ql::kSqrt(TOutput((k12 - ql::Constants<TMass>::_two()) * (k12 + ql::Constants<TMass>::_two()))));
         const TOutput r14 = ql::Constants<TOutput>::_half() * (TOutput(k14) + TOutput(ql::Sign(ql::Real(k14))) * ql::kSqrt(TOutput((k14 - ql::Constants<TMass>::_two()) * (k14 + ql::Constants<TMass>::_two()))));
         const TOutput r24 = ql::Constants<TOutput>::_half() * (TOutput(k24) + TOutput(ql::Sign(ql::Real(k24))) * ql::kSqrt(TOutput((k24 - ql::Constants<TMass>::_two()) * (k24 + ql::Constants<TMass>::_two()))));
-        if (ql::Real(k12) < -ql::Constants<TMass>::_two()) ir12 = ql::Constants<TScale>::_ten() * ql::Sign(ql::Constants<TScale>::_one() - ql::kAbs(r12));
-        if (ql::Real(k14) < -ql::Constants<TMass>::_two()) ir14 = ql::Constants<TScale>::_ten() * ql::Sign(ql::Constants<TScale>::_one() - ql::kAbs(r14));
-        if (ql::Real(k24) < -ql::Constants<TMass>::_two()) ir24 = ql::Constants<TScale>::_ten() * ql::Sign(ql::Constants<TScale>::_one() - ql::kAbs(r24));
+        if (ql::Real(k12) < -ql::Constants<TMass>::_two()) ir12 = 10 * ql::SignInt(ql::Constants<TScale>::_one() - ql::kAbs(r12));
+        if (ql::Real(k14) < -ql::Constants<TMass>::_two()) ir14 = 10 * ql::SignInt(ql::Constants<TScale>::_one() - ql::kAbs(r14));
+        if (ql::Real(k24) < -ql::Constants<TMass>::_two()) ir24 = 10 * ql::SignInt(ql::Constants<TScale>::_one() - ql::kAbs(r24));
 
         const TOutput q24 = r24 - ql::Constants<TOutput>::_one() / r24;
         const TOutput q12 = TOutput(k12) - r24 * TOutput(k14);
@@ -109,14 +109,14 @@ namespace ql
 
         res(i, 2) = res(i, 1) = ql::Constants<TOutput>::_zero();
         res(i, 0) = (
-            ql::xspence<TOutput, TMass, TScale>(x4, ix4, r14, ir14) +
-            ql::xspence<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r14, -ir14) -
+            ql::xspence<TOutput, TMass, TScale>(x4, ix4, r14, ql::from_int<TScale>(ir14)) +
+            ql::xspence<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r14, ql::from_int<TScale>(-ir14)) -
             ql::xspence<TOutput, TMass, TScale>(x4, ix4, TOutput(k34 / k13), -ql::Real(k13)) -
-            ql::xspence<TOutput, TMass, TScale>(x1, ix1, r12, ir12) -
-            ql::xspence<TOutput, TMass, TScale>(x1, ix1, ql::Constants<TOutput>::_one() / r12, -ir12) +
+            ql::xspence<TOutput, TMass, TScale>(x1, ix1, r12, ql::from_int<TScale>(ir12)) -
+            ql::xspence<TOutput, TMass, TScale>(x1, ix1, ql::Constants<TOutput>::_one() / r12, ql::from_int<TScale>(-ir12)) +
             ql::xspence<TOutput, TMass, TScale>(x1, ix1, TOutput(k23 / k13), -ql::Real(k13)) -
             TOutput{ql::Constants<TScale>::_zero(), ql::Constants<TScale>::_two() * ql::Constants<TScale>::_pi()} *
-                ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r24, -ir24, l4)
+                ql::xetatilde<TOutput, TMass, TScale>(x4, ix4, ql::Constants<TOutput>::_one() / r24, ql::from_int<TScale>(-ir24), l4)
         ) / (TOutput(m3 * m_2) * discr);
     }
 

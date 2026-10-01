@@ -123,7 +123,7 @@ namespace ql
             x43mm1 = m4sq;
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq + m3sq - m4sq, 2) - ql::Constants<TMass>::_four() * m3sq * p3sq));
-            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
             const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
             const TOutput ga43p = g43[0], ga43m = g43[1], ga43pm1 = g43m1[0], ga43mm1 = g43m1[1];
 
@@ -203,7 +203,7 @@ namespace ql
             x43mm1 = m4sq;
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq + m3sq - m4sq, 2) - ql::Constants<TMass>::_four() * m3sq * p3sq));
-            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
             const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
             const TOutput ga43p = g43[0], ga43m = g43[1], ga43pm1 = g43m1[0], ga43mm1 = g43m1[1];
 
@@ -296,9 +296,9 @@ namespace ql
             x43mm1 = -ql::Constants<TMass>::_one();
         } else {
             root = ql::kSqrt(TOutput(ql::kPow<TOutput, TMass, TScale>(p3sq-m3sq+m4sq, 2) - ql::Constants<TMass>::_four() * m4sq * p3sq));
-            const auto g34   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m4sq - m3sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
+            const auto g34   = ql::rootpair<TOutput, TMass, TScale>(TOutput(p3sq + m4sq - m3sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
             const auto g34m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m4sq - m3sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
-            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(+p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
+            const auto g43   = ql::rootpair<TOutput, TMass, TScale>(TOutput(p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m3sq * p3sq));
             const auto g43m1 = ql::rootpair<TOutput, TMass, TScale>(TOutput(-p3sq + m3sq - m4sq), root, TOutput(ql::Constants<TMass>::_four() * m4sq * p3sq));
             ga34p = g34[0]; ga34m = g34[1]; ga34pm1 = g34m1[0]; ga34mm1 = g34m1[1];
             ga43p = g43[0]; ga43m = g43[1]; ga43pm1 = g43m1[0]; ga43mm1 = g43m1[1];

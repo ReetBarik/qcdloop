@@ -60,7 +60,7 @@ if which mpicxx > /dev/null 2>&1; then
 fi
 
 # KOKKOS Related settings
-KOKKOS_TAG=4.7.01
+KOKKOS_TAG=5.1.0
 KOKKOS_BUILD=Release
 KOKKOS_URL=https://github.com/kokkos/kokkos.git
 
@@ -123,8 +123,15 @@ EXTRA_FLAGS=$NO_EXTRA_FLAGS
 ####################
 echo Installing Kokkos ARCH=$KOKKOS_ARCH_FLAG
 {
-   git clone $KOKKOS_URL -b $KOKKOS_TAG
-   check_exit_status "kokkos git clone"
+   if [ -d kokkos/.git ]; then
+      git -C kokkos fetch origin tag "$KOKKOS_TAG"
+      check_exit_status "kokkos git fetch"
+      git -C kokkos checkout "$KOKKOS_TAG"
+      check_exit_status "kokkos git checkout"
+   else
+      git clone $KOKKOS_URL -b $KOKKOS_TAG
+      check_exit_status "kokkos git clone"
+   fi
 
    cd kokkos
    
@@ -133,17 +140,16 @@ echo Installing Kokkos ARCH=$KOKKOS_ARCH_FLAG
       cmake -S . -B build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
       -DCMAKE_INSTALL_PREFIX=install/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
       -DCMAKE_BUILD_TYPE=$KOKKOS_BUILD \
-      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD=20 \
       -D$KOKKOS_ENABLED=ON \
       $EXTRA_FLAGS
    else
       cmake -S . -B build/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
       -DCMAKE_INSTALL_PREFIX=install/kokkos-$KOKKOS_TAG/$KOKKOS_BUILD \
       -DCMAKE_BUILD_TYPE=$KOKKOS_BUILD \
-      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_STANDARD=20 \
       -D$KOKKOS_ARCH_FLAG=ON \
       -D$KOKKOS_ENABLED=ON \
-      # -DCMAKE_CUDA_ARCHITECTURES=100 \
       $EXTRA_FLAGS
    fi
    check_exit_status "kokkos cmake"

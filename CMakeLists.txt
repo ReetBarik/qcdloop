@@ -69,3 +69,60 @@ add_executable(boxGPU_test examples/boxGPU_test.cc)
 target_link_libraries(boxGPU_test PUBLIC Kokkos::kokkos)
 target_compile_options(boxGPU_test PRIVATE -w)
 
+find_package(xpmath_kokkos REQUIRED)
+
+foreach(be dd ff qf tf)
+  add_executable(boxGPU_test_${be} examples/boxGPU_test_xp.cc)
+  target_link_libraries(boxGPU_test_${be} PUBLIC xpmath_kokkos::xpmath_kokkos)
+  target_compile_definitions(boxGPU_test_${be} PRIVATE XPMATH_BACKEND_${be})
+  target_compile_options(boxGPU_test_${be} PRIVATE -w)
+endforeach()
+
+# quadmath.h is host-only. Kokkos sends every C++ source of a Kokkos target
+# through nvcc_wrapper or hipcc, so this file is compiled by an explicit host
+# g++ invocation and linked in as a finished object.
+if(DEFINED ENV{DD_HOST_CXX} AND NOT "$ENV{DD_HOST_CXX}" STREQUAL "")
+  set(_dd_host_cxx "$ENV{DD_HOST_CXX}")
+else()
+  set(_dd_host_cxx "${CMAKE_CXX_COMPILER}")
+  if(_dd_host_cxx MATCHES "hipcc|nvcc")
+    execute_process(
+      COMMAND which g++
+      OUTPUT_VARIABLE _dd_host_cxx
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+  endif()
+endif()
+set(DD_QUAD_INPUTS_OBJ "${CMAKE_CURRENT_BINARY_DIR}/dd_quad_inputs.o")
+add_custom_command(
+  OUTPUT "${DD_QUAD_INPUTS_OBJ}"
+  COMMAND "${_dd_host_cxx}" -c
+          "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
+          -O2 -fext-numeric-literals
+          -o "${DD_QUAD_INPUTS_OBJ}"
+  DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.h"
+  COMMENT "Compiling DoubleDouble quad inputs with host g++"
+  VERBATIM
+)
+set_source_files_properties("${DD_QUAD_INPUTS_OBJ}" PROPERTIES
+  EXTERNAL_OBJECT TRUE
+  GENERATED TRUE
+)
+foreach(be dd ff qf tf)
+  target_sources(boxGPU_test_${be} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
+endforeach()
+find_library(QUADMATH_LIBRARY
+  NAMES libquadmath.so quadmath
+  PATHS /soft/compilers/gcc/13.3.0/x86_64-suse-linux/lib64
+  NO_DEFAULT_PATH
+)
+if(NOT QUADMATH_LIBRARY)
+  set(QUADMATH_LIBRARY quadmath)
+endif()
+foreach(be dd ff qf tf)
+  target_link_libraries(boxGPU_test_${be} PUBLIC "${QUADMATH_LIBRARY}")
+endforeach()
+
