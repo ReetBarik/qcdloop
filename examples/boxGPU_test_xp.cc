@@ -383,10 +383,9 @@ int main(int argc, char* argv[]) {
             }
         }
 	
-        if (!only.empty()) {
-            Kokkos::finalize();
-            return 0;
-        }
+        // A named integral stops here. The views must be destroyed before
+        // Kokkos::finalize, so this returns through the end of main.
+        if (only.empty()) {
 
         // Zero mass integrals - B1
         std::srand(12345);
@@ -850,6 +849,8 @@ int main(int argc, char* argv[]) {
                           << complexToCSV(res_h(i, 2)) << std::endl;
             }
         }
+
+        } // only.empty()
         
         
     }

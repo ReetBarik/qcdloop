@@ -17,6 +17,21 @@
 namespace ql
 {
 
+    // Imaginary part passed to cLn/eta. The product ix3*Re(x)*Sign(Re(x3)) is the
+    // analytic imag, but only its sign is read. x[2] = x[3]*r13 with |r13| << 1,
+    // so that product underflows a float word to 0 while ix3 is still nonzero,
+    // and Sign(0) drops the i*pi. Rebuild the sign from the factors.
+    template<typename TOutput, typename TScale>
+    KOKKOS_INLINE_FUNCTION
+    TScale bin4_ix(TScale const& ix3, TOutput const& xj, TScale const& s) {
+        const TScale xr = ql::Real(xj);
+        const TScale prod = ix3 * xr * s;
+        if (prod != TScale(0.0) || ix3 == TScale(0.0) || xr == TScale(0.0))
+            return prod;
+        return TScale(ql::Sign(ix3) * ql::Sign(xr) * s);
+    }
+
+
     /*! 
     * Finite box with 4 non-zero masses. Formulae from \cite Denner:1991qq.
     * \param res output object res[0,1,2] the coefficients in the Laurent series, following the LoopTools implementation \cite Hahn:2006qw.
@@ -153,12 +168,12 @@ namespace ql
 
         const TScale s1 = ql::Sign(ql::Real(x[0][3]));
         const TScale s2 = ql::Sign(ql::Real(x[1][3]));
-        ix[0][0] = ix[0][3] * ql::Real(x[0][0]) * s1;
-        ix[1][0] = ix[1][3] * ql::Real(x[1][0]) * s2;
-        ix[0][1] = ix[0][3] * ql::Real(x[0][1]) * s1;
-        ix[1][1] = ix[1][3] * ql::Real(x[1][1]) * s2;
-        ix[0][2] = ix[0][3] * ql::Real(x[0][2]) * s1;
-        ix[1][2] = ix[1][3] * ql::Real(x[1][2]) * s2;
+        ix[0][0] = ql::bin4_ix<TOutput, TScale>(ix[0][3], x[0][0], s1);
+        ix[1][0] = ql::bin4_ix<TOutput, TScale>(ix[1][3], x[1][0], s2);
+        ix[0][1] = ql::bin4_ix<TOutput, TScale>(ix[0][3], x[0][1], s1);
+        ix[1][1] = ql::bin4_ix<TOutput, TScale>(ix[1][3], x[1][1], s2);
+        ix[0][2] = ql::bin4_ix<TOutput, TScale>(ix[0][3], x[0][2], s1);
+        ix[1][2] = ql::bin4_ix<TOutput, TScale>(ix[1][3], x[1][2], s2);
 
         // the only two z1*z2 families that reach 1: x[k][3]/(r12*r24) and x[k][3]*(r13*r34)
         const Kokkos::Array<TOutput, 2> x3 = { x[0][3], x[1][3] };
