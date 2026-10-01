@@ -126,6 +126,14 @@ namespace ql
         TScale ix[2][4];
         ix[0][3] = ql::Imag(ql::Constants<TOutput>::_half() / a * (b - disc));
         ix[1][3] = ql::Imag(ql::Constants<TOutput>::_half() / a * (b + disc));
+        // cLn and eta read only the sign. After /a the O(eps) imag is ~1e-40,
+        // which a float word flushes to zero, and Sign(0) drops the i*pi.
+        // Sign(ix[0]) = Sign(d), Sign(ix[1]) = -Sign(d) while eps > 0.
+        if (ix[0][3] == TScale(0.0) && ix[1][3] == TScale(0.0)) {
+            const TScale sig = ql::Sign(ql::Real(d));
+            ix[0][3] = sig;
+            ix[1][3] = -sig;
+        }
 
         disc = ql::kSqrt(b * b - TOutput(ql::Constants<TScale>::_four()) * a * c);
         TOutput x[2][4];

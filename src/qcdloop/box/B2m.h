@@ -94,6 +94,32 @@ namespace ql
         res(i, 1) = res(i, 2) = ql::Constants<TOutput>::_zero();
     }
 
+    // gfx90a, ROCm 7.0.2: B11's complex-root arm (ratgam + cLn) is inlined into
+    // ql::BO. A wavefront with one negative discriminant takes that arm on a
+    // single lane. The other lanes stay on Lnrat and come back NaN or wrong,
+    // while the complex lane itself matches DoubleDouble. B12 takes the same
+    // kind of branch and does not. Outlining the arm makes the divergence a
+    // call, so the complex body is not in the kernel's divergent region.
+#if defined(__HIPCC__)
+#define QL_B11_NOINLINE __attribute__((noinline))
+#else
+#define QL_B11_NOINLINE
+#endif
+
+    template<typename TOutput, typename TMass, typename TScale>
+    QL_B11_NOINLINE KOKKOS_INLINE_FUNCTION
+    void B11_ln43_complex(
+        TOutput& ln43p, TOutput& ln43m,
+        TMass const& p3sq, TMass const& m4sq, TMass const& m3sq) {
+        TOutput rat2p, rat2m;
+        TScale ieps2;
+        ql::ratgam<TOutput, TMass, TScale>(rat2p, rat2m, ieps2, p3sq, m4sq, m3sq);
+        ln43p = ql::cLn<TOutput, TMass, TScale>(rat2p, ieps2);
+        ln43m = ql::cLn<TOutput, TMass, TScale>(rat2m, ieps2);
+    }
+
+#undef QL_B11_NOINLINE
+
     template<typename TOutput, typename TMass, typename TScale>
     KOKKOS_INLINE_FUNCTION
     void B11(
@@ -134,15 +160,12 @@ namespace ql
         }
 
         // deal with real roots
-        TOutput ln43p, ln43m, rat2p, rat2m;
-        TScale ieps2;
+        TOutput ln43p, ln43m;
         if (ql::iszero<TOutput, TMass, TScale>(ql::Imag(root))) {
             ln43p = ql::Lnrat<TOutput, TMass, TScale>(x43p, x43pm1);
             ln43m = ql::Lnrat<TOutput, TMass, TScale>(x43m, x43mm1);
         } else {
-            ql::ratgam<TOutput, TMass, TScale>(rat2p, rat2m, ieps2, p3sq, m4sq, m3sq);
-            ln43p = ql::cLn<TOutput, TMass, TScale>(rat2p, ieps2);
-            ln43m = ql::cLn<TOutput, TMass, TScale>(rat2m, ieps2);
+            ql::B11_ln43_complex<TOutput, TMass, TScale>(ln43p, ln43m, p3sq, m4sq, m3sq);
         }
 
         TOutput intbit;

@@ -286,11 +286,11 @@ int main(int argc, char* argv[]) {
             }
         }
         
-        if (argc > 3) {
-            std::cout << "Usage: " << argv[0] << " <mode> [batch_size]" << std::endl;
-            std::cout << "  mode: 0 for performance benchmark, 1 for accuracy test (required)" << std::endl;
-            std::cout << "  batch_size: Number of batch iterations (default: 1000000)" << std::endl;
-        }
+        // Optional integral name, e.g. BIN4. Empty runs the full set.
+        // BIN4 reseeds on its own, so selecting it does not change its rows.
+        string only;
+        if (argc > 3)
+            only = argv[3];
 
         std::ios::sync_with_stdio(false);
         std::cout << "Running with mode = " << mode << std::endl;
@@ -331,6 +331,8 @@ int main(int argc, char* argv[]) {
         
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
+            if (!only.empty() && only != string("BIN") + std::to_string(n_masses))
+                continue;
             // Fill host mirrors
             std::srand(12345);
             for (size_t i(0); i<batch_size; ++i) {
@@ -381,6 +383,11 @@ int main(int argc, char* argv[]) {
             }
         }
 	
+        if (!only.empty()) {
+            Kokkos::finalize();
+            return 0;
+        }
+
         // Zero mass integrals - B1
         std::srand(12345);
         for (size_t i(0); i<batch_size; ++i) {
