@@ -15,7 +15,7 @@
 #include <sstream>
 #include "qcdloop/timer.h"
 #include "qcdloop/triangleGPU.h"
-#include "dd_quad_inputs.h"
+#include "quad_inputs.h"
 
 using std::vector;
 using std::cout;

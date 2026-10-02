@@ -1,7 +1,7 @@
-// Host-only DoubleDouble inputs. This header must not include quadmath.h:
-// the kernel translation unit is compiled by nvcc or hipcc, and those
-// compilers reject __float128. The definitions live in dd_quad_inputs.cc,
-// which is compiled with host g++.
+// Host-only quad kinematics shared by every driver. This header must not
+// include quadmath.h: the kernel translation unit is compiled by nvcc or
+// hipcc, and those compilers reject __float128. The definitions live in
+// quad_inputs.cc, which is compiled with host g++.
 #pragma once
 
 struct DdLimbs {

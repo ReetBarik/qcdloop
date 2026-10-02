@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#include "dd_quad_inputs.h"
+#include "quad_inputs.h"
 #include <algorithm>
 #include <iomanip>
 #include <string>
@@ -118,7 +118,7 @@ std::string complexToCSV(const complex_t& c) {
 }
 
 #if defined(XPMATH_BACKEND_dd)
-// Limbs come from dd_quad_inputs.cc, compiled with host g++. The quad
+// Limbs come from quad_inputs.cc, compiled with host g++. The quad
 // evaluation is the same one the ddfun driver uses. A DoubleDouble built
 // from a double alone sets the low limb to zero.
 static inline real_t from_limbs(DdLimbs x) {

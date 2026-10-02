@@ -1,5 +1,5 @@
 // Compiled only with host g++. Do not include Kokkos headers here.
-#include "dd_quad_inputs.h"
+#include "quad_inputs.h"
 
 #include <cstdlib>
 

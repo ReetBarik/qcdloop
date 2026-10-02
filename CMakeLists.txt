@@ -94,28 +94,28 @@ else()
     )
   endif()
 endif()
-set(DD_QUAD_INPUTS_OBJ "${CMAKE_CURRENT_BINARY_DIR}/dd_quad_inputs.o")
+set(QUAD_INPUTS_OBJ "${CMAKE_CURRENT_BINARY_DIR}/quad_inputs.o")
 add_custom_command(
-  OUTPUT "${DD_QUAD_INPUTS_OBJ}"
+  OUTPUT "${QUAD_INPUTS_OBJ}"
   COMMAND "${_dd_host_cxx}" -c
-          "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
+          "${CMAKE_CURRENT_SOURCE_DIR}/examples/quad_inputs.cc"
           -O2 -fext-numeric-literals
-          -o "${DD_QUAD_INPUTS_OBJ}"
+          -o "${QUAD_INPUTS_OBJ}"
   DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/examples/dd_quad_inputs.h"
-  COMMENT "Compiling DoubleDouble quad inputs with host g++"
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/quad_inputs.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/quad_inputs.h"
+  COMMENT "Compiling quad inputs with host g++"
   VERBATIM
 )
-set_source_files_properties("${DD_QUAD_INPUTS_OBJ}" PROPERTIES
+set_source_files_properties("${QUAD_INPUTS_OBJ}" PROPERTIES
   EXTERNAL_OBJECT TRUE
   GENERATED TRUE
 )
 foreach(be dd ff qf tf)
-  target_sources(boxGPU_test_${be} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
+  target_sources(boxGPU_test_${be} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
 foreach(tgt tadpoleGPU_test bubbleGPU_test triangleGPU_test boxGPU_test)
-  target_sources(${tgt} PRIVATE "${DD_QUAD_INPUTS_OBJ}")
+  target_sources(${tgt} PRIVATE "${QUAD_INPUTS_OBJ}")
 endforeach()
 find_library(QUADMATH_LIBRARY
   NAMES libquadmath.so quadmath

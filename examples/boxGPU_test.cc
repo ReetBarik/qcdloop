@@ -16,7 +16,7 @@
 #include <vector>
 #include "qcdloop/timer.h"
 #include "qcdloop/boxGPU.h"
-#include "dd_quad_inputs.h"
+#include "quad_inputs.h"
 
 using std::vector;
 using std::cout;
@@ -104,90 +104,6 @@ double rs(double min, double max) {
     return dd_rands(min, max).hi;
 }
 
-// One GPU launch that occupies every compute unit stalls. The first call
-// times a few slice widths and keeps the widest one that stays in the same
-// ballpark, never a wave on every compute unit. Later integrals reuse it.
-// Host runs launch the whole batch. Points stay in order.
-struct DeviceGrid {
-    int wave;
-    int units;
-};
-
-DeviceGrid device_grid() {
-#if defined(KOKKOS_ENABLE_HIP)
-    hipDeviceProp_t const& prop = Kokkos::HIP::hip_device_prop();
-    return DeviceGrid{std::max(1, prop.warpSize), std::max(0, prop.multiProcessorCount)};
-#elif defined(KOKKOS_ENABLE_CUDA)
-    cudaDeviceProp const& prop = Kokkos::Cuda().cuda_device_prop();
-    return DeviceGrid{std::max(1, prop.warpSize), std::max(0, prop.multiProcessorCount)};
-#else
-    return DeviceGrid{1, 0};
-#endif
-}
-
-int& saved_launch_slice() {
-    static int slice = -1;
-    return slice;
-}
-
-template <class F>
-void launch_slice(int begin, int end, F const& f) {
-    Kokkos::parallel_for(
-        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(begin, end), f);
-    Kokkos::fence();
-}
-
-template <class F>
-double launch_box(int n, F const& f) {
-    ql::Timer total;
-    total.start();
-    if (n <= 0) return total.stop();
-
-    int& slice = saved_launch_slice();
-    int cursor = 0;
-    if (slice < 0) {
-        DeviceGrid grid = device_grid();
-        int cap = (grid.units > 1) ? (grid.units - 1) * grid.wave : 0;
-        if (cap <= 0 || n <= grid.wave) {
-            slice = n;
-            std::cerr << "Launch slice " << slice << " covers the whole batch" << std::endl;
-            launch_slice(0, n, f);
-            return total.stop();
-        }
-        if (cap > n) cap = n;
-
-        int warm = std::min(n, grid.wave);
-        launch_slice(0, warm, f);
-        cursor = warm;
-
-        int width = grid.wave;
-        double best = 0.0;
-        while (cursor < n && width < cap) {
-            int trial = std::min(cap, width * 2);
-            if (cursor + trial > n) break;
-            ql::Timer step;
-            step.start();
-            launch_slice(cursor, cursor + trial, f);
-            double sec = step.stop();
-            double rate = trial / std::max(sec, 1e-9);
-            cursor += trial;
-            if (best > 0.0 && rate < best * 0.5) break;
-            if (rate > best) best = rate;
-            width = trial;
-        }
-        slice = width;
-        std::cerr << "Launch slice " << slice << " (device cap " << cap << ")" << std::endl;
-    }
-
-    while (cursor < n) {
-        int count = std::min(slice, n - cursor);
-        launch_slice(cursor, cursor + count, f);
-        cursor += count;
-    }
-    return total.stop();
-}
-
-
 int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
@@ -266,7 +182,10 @@ int main(int argc, char* argv[]) {
         for (size_t i = 0; i < batch_size; ++i) {
             mu2_h(i) = dd_mu2().hi;
         }
-        
+
+        ql::Timer tt;
+        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> policy(0, batch_size);
+
         // Trigger BIN0 - BIN4
         for (int n_masses(0); n_masses<5; n_masses++) {
             // Fill host mirrors
@@ -293,9 +212,12 @@ int main(int argc, char* argv[]) {
             Kokkos::deep_copy(p_d, p_h);
             
             // Launch parallel_for with timing
-            double elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+            tt.start();
+            Kokkos::parallel_for("Box Integral BIN", policy, KOKKOS_LAMBDA(const int& i) {
                 ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
             });
+            Kokkos::fence();
+            double elapsed = tt.stop();
             
             // Copy results back
             Kokkos::deep_copy(res_h, res_d);
@@ -329,9 +251,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        double elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B1", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        double elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B1," << batch_size << "," << elapsed << std::endl;
@@ -356,9 +281,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B2", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B2," << batch_size << "," << elapsed << std::endl;
@@ -383,9 +311,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B3", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B3," << batch_size << "," << elapsed << std::endl;
@@ -411,9 +342,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B4", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B4," << batch_size << "," << elapsed << std::endl;
@@ -439,9 +373,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B5", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B5," << batch_size << "," << elapsed << std::endl;
@@ -470,9 +407,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B6", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B6," << batch_size << "," << elapsed << std::endl;
@@ -498,9 +438,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B7", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B7," << batch_size << "," << elapsed << std::endl;
@@ -526,9 +469,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B8", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B8," << batch_size << "," << elapsed << std::endl;
@@ -554,9 +500,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B9", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B9," << batch_size << "," << elapsed << std::endl;
@@ -582,9 +531,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B10", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B10," << batch_size << "," << elapsed << std::endl;
@@ -615,9 +567,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B11", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B11," << batch_size << "," << elapsed << std::endl;
@@ -643,9 +598,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B12", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B12," << batch_size << "," << elapsed << std::endl;
@@ -671,9 +629,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B13", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B13," << batch_size << "," << elapsed << std::endl;
@@ -699,9 +660,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B14", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B14," << batch_size << "," << elapsed << std::endl;
@@ -727,9 +691,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B15", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B15," << batch_size << "," << elapsed << std::endl;
@@ -755,9 +722,12 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(mu2_d, mu2_h);
         Kokkos::deep_copy(m_d, m_h);
         Kokkos::deep_copy(p_d, p_h);
-        elapsed = launch_box(batch_size, KOKKOS_LAMBDA(const int& i) {
+        tt.start();
+        Kokkos::parallel_for("Box Integral B16", policy, KOKKOS_LAMBDA(const int& i) {
             ql::BO<complex, double, double>(res_d, mu2_d, m_d, p_d, i);
         });
+        Kokkos::fence();
+        elapsed = tt.stop();
         Kokkos::deep_copy(res_h, res_d);
         if (mode == 0) {
             std::cout << "B16," << batch_size << "," << elapsed << std::endl;
